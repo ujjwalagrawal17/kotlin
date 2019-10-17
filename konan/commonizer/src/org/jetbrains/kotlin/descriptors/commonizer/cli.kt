@@ -6,19 +6,23 @@
 package org.jetbrains.kotlin.descriptors.commonizer
 
 import org.jetbrains.kotlin.config.LanguageVersionSettingsImpl
-import org.jetbrains.kotlin.descriptors.ModuleDescriptor
+import org.jetbrains.kotlin.descriptors.commonizer.ModuleForCommonization.DeserializedModule
+import org.jetbrains.kotlin.descriptors.commonizer.ModuleForCommonization.SyntheticModule
+import org.jetbrains.kotlin.descriptors.impl.ModuleDescriptorImpl
 import org.jetbrains.kotlin.konan.library.*
 import org.jetbrains.kotlin.konan.library.KonanFactories.DefaultDeserializedDescriptorFactory
+import org.jetbrains.kotlin.konan.properties.propertyList
 import org.jetbrains.kotlin.konan.target.HostManager
 import org.jetbrains.kotlin.konan.target.KonanTarget
-import org.jetbrains.kotlin.library.KotlinLibrary
+import org.jetbrains.kotlin.library.*
+import org.jetbrains.kotlin.library.impl.BaseWriterImpl
+import org.jetbrains.kotlin.library.impl.KoltinLibraryWriterImpl
 import org.jetbrains.kotlin.library.impl.createKotlinLibrary
+import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.serialization.konan.impl.KlibResolvedModuleDescriptorsFactoryImpl
+import org.jetbrains.kotlin.serialization.konan.impl.KlibResolvedModuleDescriptorsFactoryImpl.Companion.FORWARD_DECLARATIONS_MODULE_NAME
 import org.jetbrains.kotlin.storage.LockBasedStorageManager
 import java.io.File
-import java.nio.file.Files.isDirectory
-import java.nio.file.Files.list
-import java.nio.file.Path
-import java.util.stream.Collectors
 import kotlin.system.exitProcess
 import org.jetbrains.kotlin.konan.file.File as KFile
 
@@ -37,16 +41,16 @@ fun main(args: Array<String>) {
         }
     }
 
-    val output = parsedArgs["-output"]?.firstOrNull()?.let(::File) ?: printUsageAndExit("output not specified")
+    val destination = parsedArgs["-output"]?.firstOrNull()?.let(::File) ?: printUsageAndExit("output not specified")
     when {
-        !output.exists() -> output.mkdirs()
-        !output.isDirectory -> printErrorAndExit("output already exists: $output")
-        output.walkTopDown().any { it != output } -> printErrorAndExit("output is not empty: $output")
+        !destination.exists() -> destination.mkdirs()
+        !destination.isDirectory -> printErrorAndExit("output already exists: $destination")
+        destination.walkTopDown().any { it != destination } -> printErrorAndExit("output is not empty: $destination")
     }
 
     val modulesByTargets = loadModules(repository, targets)
     val result = commonize(modulesByTargets)
-    saveModules(output, result)
+    saveModules(modulesByTargets, destination, result)
 
     println("Done.")
     println()
@@ -87,29 +91,28 @@ private fun printUsageAndExit(errorMessage: String? = null): Nothing {
     exitProcess(if (errorMessage != null) 1 else 0)
 }
 
-private fun loadModules(repository: File, targets: List<KonanTarget>): Map<KonanTarget, List<ModuleDescriptor>> {
-    val stdlibPath = repository.resolve(konanCommonLibraryPath(KONAN_STDLIB_NAME)).toPath()
-    val stdlib = createLibrary(stdlibPath)
+private fun loadModules(repository: File, targets: List<KonanTarget>): Map<InputTarget, List<ModuleForCommonization>> {
+    val stdlibPath = repository.resolve(konanCommonLibraryPath(KONAN_STDLIB_NAME))
+    val stdlib = loadLibrary(stdlibPath)
 
     val librariesByTargets = targets.map { target ->
         val platformLibsPath = repository.resolve(KONAN_DISTRIBUTION_KLIB_DIR)
             .resolve(KONAN_DISTRIBUTION_PLATFORM_LIBS_DIR)
             .resolve(target.name)
-            .toPath()
 
-        val platformLibs = platformLibsPath.takeIf { isDirectory(it) }
-            ?.let { list(it).collect(Collectors.toList()) }
+        val platformLibs = platformLibsPath.takeIf { it.isDirectory }
+            ?.listFiles()
             ?.takeIf { it.isNotEmpty() }
-            ?.map { createLibrary(it) }
+            ?.map { loadLibrary(it) }
             ?: printErrorAndExit("no platform libraries found for target $target in $platformLibsPath")
 
-        target to platformLibs
+        InputTarget(target.name, target) to platformLibs
     }.toMap()
 
     return librariesByTargets.mapValues { (target, libraries) ->
         val storageManager = LockBasedStorageManager("Target $target")
 
-        val stdlibModule = DefaultDeserializedDescriptorFactory.createDescriptorAndNewBuiltIns(
+        val rawStdlibModule = DefaultDeserializedDescriptorFactory.createDescriptorAndNewBuiltIns(
             library = stdlib,
             languageVersionSettings = LanguageVersionSettingsImpl.DEFAULT,
             storageManager = storageManager,
@@ -117,37 +120,42 @@ private fun loadModules(repository: File, targets: List<KonanTarget>): Map<Konan
         )
 
         val otherModules = libraries.map { library ->
-            DefaultDeserializedDescriptorFactory.createDescriptorOptionalBuiltIns(
+            val rawModule = DefaultDeserializedDescriptorFactory.createDescriptorOptionalBuiltIns(
                 library = library,
                 languageVersionSettings = LanguageVersionSettingsImpl.DEFAULT,
                 storageManager = storageManager,
-                builtIns = stdlibModule.builtIns,
+                builtIns = rawStdlibModule.builtIns,
                 packageAccessHandler = null
             )
+            val data = SensitiveManifestData.readFrom(library)
+            DeserializedModule(rawModule, data, File(library.libraryFile.path))
         }
 
-        val forwardDeclarationsModule = createKotlinNativeForwardDeclarationsModule(
+        val rawForwardDeclarationsModule = createKotlinNativeForwardDeclarationsModule(
             storageManager = storageManager,
-            builtIns = stdlibModule.builtIns
+            builtIns = rawStdlibModule.builtIns
         )
 
-        val deserializedModules = listOf(stdlibModule) + otherModules
-        val allModules = deserializedModules + forwardDeclarationsModule
-        deserializedModules.forEach { it.setDependencies(allModules) }
+        val onlyDeserializedModules = listOf(rawStdlibModule) + otherModules.map { it.module }
+        val allModules = onlyDeserializedModules + rawForwardDeclarationsModule
+        onlyDeserializedModules.forEach { it.setDependencies(allModules) }
 
-        allModules
+        val stdlibModule = DeserializedModule(rawStdlibModule, SensitiveManifestData.readFrom(stdlib), File(stdlib.libraryFile.path))
+        val forwardDeclarationsModule = SyntheticModule(rawForwardDeclarationsModule)
+
+        listOf(stdlibModule) + otherModules + forwardDeclarationsModule
     }
 }
 
-private fun createLibrary(path: Path): KotlinLibrary {
-    if (!isDirectory(path)) printErrorAndExit("library not found: $path")
-    return createKotlinLibrary(KFile(path))
+private fun loadLibrary(location: File): KotlinLibrary {
+    if (!location.isDirectory) printErrorAndExit("library not found: $location")
+    return createKotlinLibrary(KFile(location.path))
 }
 
-private fun commonize(modulesByTargets: Map<KonanTarget, List<ModuleDescriptor>>): CommonizationPerformed {
+private fun commonize(modulesByTargets: Map<InputTarget, List<ModuleForCommonization>>): CommonizationPerformed {
     val parameters = CommonizationParameters().apply {
         modulesByTargets.forEach { (target, modules) ->
-            addTarget(InputTarget(target.name, target), modules)
+            addTarget(target, modules.map { it.module })
         }
     }
 
@@ -158,6 +166,119 @@ private fun commonize(modulesByTargets: Map<KonanTarget, List<ModuleDescriptor>>
     }
 }
 
-private fun saveModules(output: File, result: CommonizationPerformed) {
-    TODO("implement")
+private fun saveModules(
+    originalModulesByTargets: Map<InputTarget, List<ModuleForCommonization>>,
+    destination: File,
+    result: CommonizationPerformed
+) {
+    // optimization: stdlib effectively remains the same across all Kotlin/Native targets,
+    // so it can be just copied to the new destination without running serializer
+    val stdlibOrigin = originalModulesByTargets.values.asSequence()
+        .flatten()
+        .filterIsInstance<DeserializedModule>()
+        .map { it.location }
+        .first { it.endsWith(KONAN_STDLIB_NAME) }
+
+    val stdlibDestination = destination.resolve(KONAN_DISTRIBUTION_COMMON_LIBS_DIR).resolve(KONAN_STDLIB_NAME)
+    stdlibOrigin.copyRecursively(stdlibDestination)
+
+    val originalModulesManifestData = originalModulesByTargets.mapValues { (_, modules) ->
+        modules.asSequence()
+            .filterIsInstance<DeserializedModule>()
+            .filter { !it.location.endsWith(KONAN_STDLIB_NAME) }
+            .associate { it.module.name to it.data }
+    }
+
+    val stdlibName = Name.special("<$KONAN_STDLIB_NAME>")
+
+    result.concreteTargets.forEach { target ->
+        val konanTarget = target.konanTarget!!
+        val targetLibsDestination = destination.resolve(KONAN_DISTRIBUTION_PLATFORM_LIBS_DIR).resolve(konanTarget.name)
+
+        val newModulesManifestData = originalModulesManifestData.getValue(target)
+        val newModules = result.modulesByTargets.getValue(target)
+
+        for (newModule in newModules) {
+            val libraryName = newModule.name
+            if (libraryName == stdlibName || libraryName == FORWARD_DECLARATIONS_MODULE_NAME) continue
+
+            // TODO: obtain serialization data
+//            val metadata = TODO()
+            val manifestData = newModulesManifestData.getValue(newModule.name)
+            val libraryDestination = targetLibsDestination.resolve(libraryName.asString().trimStart('<').trimEnd('>'))
+
+//            writeLibrary(metadata, manifestData, libraryDestination)
+            println("$manifestData - $libraryDestination")
+        }
+    }
+
+    TODO("serialize common target")
+}
+
+private sealed class ModuleForCommonization(val module: ModuleDescriptorImpl) {
+    class DeserializedModule(
+        module: ModuleDescriptorImpl,
+        val data: SensitiveManifestData,
+        val location: File
+    ) : ModuleForCommonization(module)
+
+    class SyntheticModule(module: ModuleDescriptorImpl) : ModuleForCommonization(module)
+}
+
+private data class SensitiveManifestData(
+    val uniqueName: String,
+    val versions: KonanLibraryVersioning,
+    val dependencies: List<String>,
+    val isInterop: Boolean,
+    val packageFqName: String?,
+    val exportForwardDeclarations: List<String>
+) {
+    fun applyTo(library: BaseWriterImpl) {
+        library.manifestProperties[KLIB_PROPERTY_UNIQUE_NAME] = uniqueName
+
+        // note: versions can't be added here
+
+        if (dependencies.isNotEmpty())
+            library.manifestProperties[KLIB_PROPERTY_DEPENDS] = dependencies.joinToString(separator = " ")
+        else
+            library.manifestProperties.remove(KLIB_PROPERTY_DEPENDS)
+
+        if (isInterop)
+            library.manifestProperties[KLIB_PROPERTY_INTEROP] = "true"
+        else
+            library.manifestProperties.remove(KLIB_PROPERTY_INTEROP)
+
+        if (packageFqName != null)
+            library.manifestProperties[KLIB_PROPERTY_PACKAGE] = packageFqName
+        else
+            library.manifestProperties.remove(KLIB_PROPERTY_PACKAGE)
+
+        if (exportForwardDeclarations.isNotEmpty())
+            library.manifestProperties[KLIB_PROPERTY_EXPORT_FORWARD_DECLARATIONS] =
+                exportForwardDeclarations.joinToString(separator = " ")
+        else
+            library.manifestProperties.remove(KLIB_PROPERTY_EXPORT_FORWARD_DECLARATIONS)
+    }
+
+    companion object {
+        fun readFrom(library: KotlinLibrary) = SensitiveManifestData(
+            uniqueName = library.uniqueName,
+            versions = library.versions,
+            dependencies = library.manifestProperties.propertyList(KLIB_PROPERTY_DEPENDS, escapeInQuotes = true),
+            isInterop = library.isInterop,
+            packageFqName = library.packageFqName,
+            exportForwardDeclarations = library.exportForwardDeclarations
+        )
+    }
+}
+
+private fun writeLibrary(
+    metadata: SerializedMetadata,
+    manifestData: SensitiveManifestData,
+    destination: File
+) {
+    val library = KoltinLibraryWriterImpl(KFile(destination.path), manifestData.uniqueName, manifestData.versions, nopack = false)
+    library.addMetadata(metadata)
+    manifestData.applyTo(library.base as BaseWriterImpl)
+    library.commit()
 }
