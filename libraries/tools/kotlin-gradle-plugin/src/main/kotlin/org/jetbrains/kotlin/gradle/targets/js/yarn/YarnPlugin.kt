@@ -18,9 +18,11 @@ open class YarnPlugin : Plugin<Project> {
         val nodeJs = NodeJsRootPlugin.apply(this)
 
         this.extensions.create(YarnRootExtension.YARN, YarnRootExtension::class.java, this)
-        tasks.create(YarnSetupTask.NAME, YarnSetupTask::class.java) {
+        val yarnSetup = tasks.create(YarnSetupTask.NAME, YarnSetupTask::class.java) {
             it.dependsOn(nodeJs.nodeJsSetupTask)
         }
+
+        nodeJs.npmInstallTask.dependsOn(yarnSetup)
     }
 
     companion object {
