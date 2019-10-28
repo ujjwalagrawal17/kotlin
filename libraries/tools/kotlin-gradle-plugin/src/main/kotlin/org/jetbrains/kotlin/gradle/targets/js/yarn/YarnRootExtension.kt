@@ -7,6 +7,7 @@ package org.jetbrains.kotlin.gradle.targets.js.yarn
 
 import org.gradle.api.Project
 import org.jetbrains.kotlin.gradle.logging.kotlinInfo
+import org.jetbrains.kotlin.gradle.targets.js.nodejs.NodeJsPlatform
 import org.jetbrains.kotlin.gradle.targets.js.nodejs.NodeJsRootPlugin
 
 open class YarnRootExtension(val project: Project) {
@@ -19,6 +20,15 @@ open class YarnRootExtension(val project: Project) {
     }
 
     var installationDir = gradleHome.resolve("yarn")
+
+    var download = true
+
+    private var _command: String? = null
+    var command: String
+        get() = _command ?: "yarn.js"
+        set(value) {
+            _command = value
+        }
 
     var downloadBaseUrl = "https://github.com/yarnpkg/yarn/releases/download"
     var version = "1.15.2"
@@ -35,16 +45,25 @@ open class YarnRootExtension(val project: Project) {
         NodeJsRootPlugin.apply(project).executeSetup()
 
         val env = environment
-        if (!env.home.isDirectory) {
+        if (download && !env.home.isDirectory) {
             yarnSetupTask.setup()
         }
     }
 
-    internal val environment
-        get() = YarnEnv(
-            downloadUrl = "$downloadBaseUrl/v$version/yarn-v$version.tar.gz",
-            home = installationDir.resolve("yarn-v$version")
-        )
+    internal val environment: YarnEnv
+        get() {
+            val home = installationDir.resolve("yarn-v$version")
+
+            val isWindows = NodeJsPlatform.name == NodeJsPlatform.WIN
+
+            return YarnEnv(
+                downloadUrl = "$downloadBaseUrl/v$version/yarn-v$version.tar.gz",
+                home = home,
+                executable = if (!download) {
+                    if (_command == null) "yarn${if (isWindows) ".cmd" else ""}" else command
+                } else home.resolve("bin/$command").absolutePath
+            )
+        }
 
     companion object {
         const val YARN: String = "kotlinYarn"

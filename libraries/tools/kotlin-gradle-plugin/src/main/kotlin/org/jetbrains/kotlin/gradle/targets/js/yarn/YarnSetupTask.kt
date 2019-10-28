@@ -22,6 +22,14 @@ open class YarnSetupTask : DefaultTask() {
         @Input get() = env.downloadUrl
 
     @Suppress("MemberVisibilityCanBePrivate")
+    val executable
+        @Input get() = env.executable
+
+    @Suppress("MemberVisibilityCanBePrivate")
+    val download
+        @Input get() = settings.download
+
+    @Suppress("MemberVisibilityCanBePrivate")
     val destination: File
         @OutputDirectory get() = env.home
 
@@ -29,7 +37,7 @@ open class YarnSetupTask : DefaultTask() {
         group = NodeJsRootPlugin.TASKS_GROUP_NAME
         description = "Download and install a local yarn version"
         onlyIf {
-            !env.home.isDirectory
+            settings.download && !env.home.isDirectory
         }
     }
 

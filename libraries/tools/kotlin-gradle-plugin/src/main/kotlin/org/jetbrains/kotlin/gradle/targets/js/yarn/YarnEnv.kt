@@ -9,5 +9,6 @@ import java.io.File
 
 internal data class YarnEnv(
     val downloadUrl: String,
-    val home: File
+    val home: File,
+    val executable: String
 )
