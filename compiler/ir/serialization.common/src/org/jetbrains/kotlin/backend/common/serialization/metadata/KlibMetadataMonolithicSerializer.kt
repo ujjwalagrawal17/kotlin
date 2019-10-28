@@ -20,9 +20,10 @@ import org.jetbrains.kotlin.serialization.DescriptorSerializer
 class KlibMetadataMonolithicSerializer(
     languageVersionSettings: LanguageVersionSettings,
     metadataVersion: BinaryVersion,
+    moduleDescriptor: ModuleDescriptor,
     descriptorTable: DescriptorTable,
     val bindingContext: BindingContext
-) : KlibMetadataSerializer(languageVersionSettings, metadataVersion, descriptorTable) {
+) : KlibMetadataSerializer(languageVersionSettings, metadataVersion, moduleDescriptor, descriptorTable) {
 
     protected fun serializePackageFragment(fqName: FqName,
                                            module: ModuleDescriptor,

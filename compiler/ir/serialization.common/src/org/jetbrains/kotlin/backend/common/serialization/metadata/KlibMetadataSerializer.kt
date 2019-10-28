@@ -21,6 +21,7 @@ import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.resolve.BindingContext
 import org.jetbrains.kotlin.resolve.descriptorUtil.filterOutSourceAnnotations
 import org.jetbrains.kotlin.resolve.descriptorUtil.fqNameSafe
+import org.jetbrains.kotlin.resolve.multiplatform.ExpectedActualResolver
 import org.jetbrains.kotlin.resolve.scopes.DescriptorKindFilter
 import org.jetbrains.kotlin.serialization.DescriptorSerializer
 import org.jetbrains.kotlin.serialization.StringTableImpl
@@ -34,6 +35,7 @@ internal fun <T, R> Iterable<T>.maybeChunked(size: Int?, transform: (List<T>) ->
 abstract class KlibMetadataSerializer(
     val languageVersionSettings: LanguageVersionSettings,
     val metadataVersion: BinaryVersion,
+    val moduleDescriptor: ModuleDescriptor,
     val descriptorTable: DescriptorTable,
     val skipExpects: Boolean = false
 ) {
@@ -121,11 +123,14 @@ abstract class KlibMetadataSerializer(
     // This is done because deserialized member scope doesn't give us actuals
     // when it has a choice
     private fun List<DeclarationDescriptor>.filterOutExpectsWithActuals(): List<DeclarationDescriptor> {
-        val actualClassIds = this.filter{ !it.isExpectMember }.map { ClassId.topLevel(it.fqNameSafe) }
-        return this.filterNot {
-            // TODO: this only filters classes for now.
-            // Need to do the same for functions etc
-            (it is ClassDescriptor) && it.isExpect() && ClassId.topLevel(it.fqNameSafe) in actualClassIds
+        return this.filter {
+            if (it.isExpectMember) {
+                require(it is MemberDescriptor)
+                ExpectedActualResolver.findActualForExpected(
+                    it,
+                    moduleDescriptor
+                )?.get(ExpectedActualResolver.Compatibility.Compatible) == null
+            } else true
         }
     }
 
