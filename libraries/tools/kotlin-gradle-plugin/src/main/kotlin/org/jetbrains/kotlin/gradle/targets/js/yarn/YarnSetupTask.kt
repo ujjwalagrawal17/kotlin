@@ -28,6 +28,9 @@ open class YarnSetupTask : DefaultTask() {
     init {
         group = NodeJsRootPlugin.TASKS_GROUP_NAME
         description = "Download and install a local yarn version"
+        onlyIf {
+            !env.home.isDirectory
+        }
     }
 
     @TaskAction
