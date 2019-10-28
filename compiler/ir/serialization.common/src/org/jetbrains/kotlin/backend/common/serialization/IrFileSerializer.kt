@@ -119,7 +119,8 @@ import org.jetbrains.kotlin.backend.common.serialization.proto.Visibility as Pro
 open class IrFileSerializer(
     val logger: LoggingContext,
     private val declarationTable: DeclarationTable,
-    private val bodiesOnlyForInlines: Boolean = false
+    private val bodiesOnlyForInlines: Boolean = false,
+    private val skipExpects: Boolean = false
 ) {
 
     private val loopIndex = mutableMapOf<IrLoop, Int>()
@@ -1280,7 +1281,7 @@ open class IrFileSerializer(
             .addAllAnnotation(serializeAnnotations(file.annotations))
 
         file.declarations.forEach {
-            if (it.descriptor.isExpectMember && !it.descriptor.isSerializableExpectClass) {
+            if (skipExpects && it.descriptor.isExpectMember && !it.descriptor.isSerializableExpectClass) {
                 topLevelDeclarations.add(SkippedDeclaration)
                 return@forEach
             }

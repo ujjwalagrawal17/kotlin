@@ -44,13 +44,11 @@ class KlibMetadataIncrementalSerializer(
 
         val classifierDescriptors = allDescriptors
             .filterIsInstance<ClassifierDescriptor>()
-            .filter { !it.isExpectMember || it.isSerializableExpectClass }
             .sortedBy { it.fqNameSafe.asString() }
 
         val topLevelDescriptors = DescriptorSerializer.sort(
             allDescriptors
                 .filterIsInstance<CallableDescriptor>()
-                .filter { !it.isExpectMember }
         )
 
         // TODO: For now, in the incremental serializer, we assume

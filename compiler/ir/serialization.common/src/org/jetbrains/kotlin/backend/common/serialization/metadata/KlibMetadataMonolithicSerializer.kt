@@ -39,13 +39,13 @@ class KlibMetadataMonolithicSerializer(
         val classifierDescriptors = DescriptorSerializer.sort(
             fragments.flatMap {
                 it.getMemberScope().getDescriptorsFiltered(DescriptorKindFilter.CLASSIFIERS)
-            }.filter { !it.isExpectMember || it.isSerializableExpectClass }
+            }
         )
 
         val topLevelDescriptors = DescriptorSerializer.sort(
             fragments.flatMap { fragment ->
                 fragment.getMemberScope().getDescriptorsFiltered(DescriptorKindFilter.CALLABLES)
-            }.filter { !it.isExpectMember }
+            }
         )
 
         return serializeDescriptors(fqName, classifierDescriptors, topLevelDescriptors, bindingContext)

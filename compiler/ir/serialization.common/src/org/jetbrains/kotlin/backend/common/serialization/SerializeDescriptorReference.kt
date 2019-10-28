@@ -5,6 +5,7 @@
 
 package org.jetbrains.kotlin.backend.common.serialization
 
+import org.jetbrains.kotlin.backend.common.ir.isExpect
 import org.jetbrains.kotlin.backend.common.serialization.proto.DescriptorReference as ProtoDescriptorReference
 
 import org.jetbrains.kotlin.descriptors.*
@@ -122,8 +123,8 @@ open class DescriptorReferenceSerializer(
                 DescriptorReferenceFlags.IS_DEFAULT_CONSTRUCTOR.encode(isDefaultConstructor) or
                 DescriptorReferenceFlags.IS_ENUM_ENTRY.encode(isEnumEntry) or
                 DescriptorReferenceFlags.IS_ENUM_SPECIAL.encode(isEnumSpecial) or
-                DescriptorReferenceFlags.IS_TYPE_PARAMETER.encode(isTypeParameter)
-
+                DescriptorReferenceFlags.IS_TYPE_PARAMETER.encode(isTypeParameter) or
+                DescriptorReferenceFlags.IS_EXPECT.encode(declaration.isExpect || (declaration.parent as? IrDeclaration)?.isExpect ?: false)
         proto.flags = flags
 
         if (uniqId != null) proto.uniqIdIndex = uniqId.index

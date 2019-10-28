@@ -5,6 +5,7 @@
 
 package org.jetbrains.kotlin.backend.common.serialization
 
+import org.jetbrains.kotlin.backend.common.ir.isExpect
 import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.symbols.IrTypeParameterSymbol
@@ -240,7 +241,9 @@ abstract class KotlinManglerImpl : KotlinMangler {
         is IrTypeParameter -> this.symbolName
         is IrTypeAlias -> this.symbolName
         else -> error("Unexpected exported declaration: $this")
-    }
+    } + expectPart
+
+    private val IrDeclaration.expectPart get() = if (this.isExpect) "#expect" else ""
 
     private val IrDeclarationParent.fqNameUnique: FqName
         get() = when (this) {
