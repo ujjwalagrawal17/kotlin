@@ -25,7 +25,7 @@ open class YarnRootExtension(val project: Project) {
 
     private var _command: String? = null
     var command: String
-        get() = _command ?: "yarn.js"
+        get() = _command ?: if (download) "yarn.js" else "yarn"
         set(value) {
             _command = value
         }
@@ -60,7 +60,7 @@ open class YarnRootExtension(val project: Project) {
                 downloadUrl = "$downloadBaseUrl/v$version/yarn-v$version.tar.gz",
                 home = home,
                 executable = if (!download) {
-                    if (_command == null) "yarn${if (isWindows) ".cmd" else ""}" else command
+                    "$command${if (isWindows && _command == null) ".cmd" else ""}"
                 } else home.resolve("bin/$command").absolutePath
             )
         }
