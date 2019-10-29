@@ -443,6 +443,22 @@ class Kotlin2JsGradlePluginIT : BaseGradleIT() {
                 ":yarnConcreteVersionFolderChecker"
             )
         }
+
+        gradleBuildScript().appendText("\nyarn.version = \"1.9.2\"")
+
+        build("kotlinYarnSetup") {
+            assertSuccessful()
+        }
+
+        gradleBuildScript().appendText("\nyarn.version = \"1.9.3\"")
+
+        build("kotlinYarnSetup") {
+            assertSuccessful()
+
+            assertTasksSkipped(
+                ":kotlinYarnSetup"
+            )
+        }
     }
 
     @Test

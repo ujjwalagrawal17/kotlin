@@ -1,4 +1,3 @@
-import org.jetbrains.kotlin.gradle.targets.js.yarn.YarnSetupTask
 import org.jetbrains.kotlin.gradle.targets.js.yarn.yarn
 
 plugins {
