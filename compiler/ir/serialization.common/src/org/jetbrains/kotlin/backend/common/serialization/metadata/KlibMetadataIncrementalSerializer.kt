@@ -6,8 +6,6 @@
 package org.jetbrains.kotlin.ir.backend.js.lower.serialization.metadata
 
 import org.jetbrains.kotlin.backend.common.serialization.DescriptorTable
-import org.jetbrains.kotlin.backend.common.serialization.isExpectMember
-import org.jetbrains.kotlin.backend.common.serialization.isSerializableExpectClass
 import org.jetbrains.kotlin.backend.common.serialization.metadata.KlibMetadataSerializer
 import org.jetbrains.kotlin.backend.common.serialization.metadata.KlibMetadataVersion
 import org.jetbrains.kotlin.config.LanguageVersionSettings
@@ -29,8 +27,9 @@ class KlibMetadataIncrementalSerializer(
     languageVersionSettings: LanguageVersionSettings,
     metadataVersion: BinaryVersion,
     moduleDescriptor: ModuleDescriptor,
-    descriptorTable: DescriptorTable
-) : KlibMetadataSerializer(languageVersionSettings, metadataVersion, moduleDescriptor, descriptorTable) {
+    descriptorTable: DescriptorTable,
+    skipExpects: Boolean
+) : KlibMetadataSerializer(languageVersionSettings, metadataVersion, moduleDescriptor, descriptorTable, skipExpects) {
 
     fun serializePackageFragment(
         bindingContext: BindingContext,

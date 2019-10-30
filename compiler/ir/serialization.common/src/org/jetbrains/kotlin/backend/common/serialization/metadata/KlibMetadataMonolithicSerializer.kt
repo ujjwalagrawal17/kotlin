@@ -22,8 +22,9 @@ class KlibMetadataMonolithicSerializer(
     metadataVersion: BinaryVersion,
     moduleDescriptor: ModuleDescriptor,
     descriptorTable: DescriptorTable,
-    val bindingContext: BindingContext
-) : KlibMetadataSerializer(languageVersionSettings, metadataVersion, moduleDescriptor, descriptorTable) {
+    val bindingContext: BindingContext,
+    skipExpects: Boolean
+) : KlibMetadataSerializer(languageVersionSettings, metadataVersion, moduleDescriptor, descriptorTable, skipExpects) {
 
     protected fun serializePackageFragment(fqName: FqName,
                                            module: ModuleDescriptor,

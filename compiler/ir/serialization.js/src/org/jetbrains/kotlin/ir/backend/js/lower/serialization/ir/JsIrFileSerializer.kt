@@ -13,8 +13,9 @@ import org.jetbrains.kotlin.ir.declarations.IrProperty
 class JsIrFileSerializer(
     logger: LoggingContext,
     declarationTable: DeclarationTable,
+    skipExpects: Boolean,
     bodiesOnlyForInlines: Boolean = false
-) : IrFileSerializer(logger, declarationTable, bodiesOnlyForInlines) {
+) : IrFileSerializer(logger, declarationTable, bodiesOnlyForInlines = bodiesOnlyForInlines, skipExpects = skipExpects) {
 
     // Temporary keep order of any property, even of constants
     override fun keepOrderOfProperties(property: IrProperty): Boolean = true
