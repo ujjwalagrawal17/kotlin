@@ -102,13 +102,5 @@ open class NodeJsRootExtension(val rootProject: Project) {
 
     companion object {
         const val EXTENSION_NAME: String = "kotlinNodeJs"
-
-        operator fun get(project: Project): NodeJsRootExtension {
-            val rootProject = project.rootProject
-            return NodeJsRootPlugin.apply(rootProject)
-        }
     }
 }
-
-val Project.nodejs: NodeJsRootExtension
-    get() = NodeJsRootExtension[this]

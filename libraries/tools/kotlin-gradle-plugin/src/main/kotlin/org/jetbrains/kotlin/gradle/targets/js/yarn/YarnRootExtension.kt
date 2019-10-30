@@ -67,14 +67,5 @@ open class YarnRootExtension(val project: Project) {
 
     companion object {
         const val YARN: String = "kotlinYarn"
-
-        operator fun get(project: Project): YarnRootExtension {
-            val rootProject = project.rootProject
-            rootProject.plugins.apply(YarnPlugin::class.java)
-            return rootProject.extensions.getByName(YARN) as YarnRootExtension
-        }
     }
 }
-
-val Project.yarn: YarnRootExtension
-    get() = YarnRootExtension[this]

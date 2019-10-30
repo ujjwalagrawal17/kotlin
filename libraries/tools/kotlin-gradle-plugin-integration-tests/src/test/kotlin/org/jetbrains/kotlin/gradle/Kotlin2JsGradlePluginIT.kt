@@ -433,7 +433,19 @@ class Kotlin2JsGradlePluginIT : BaseGradleIT() {
             )
         }
 
-        gradleBuildScript().appendText("\nyarn.version = \"1.9.3\"")
+        fun setYarnVersion(version: String): String {
+            return """
+            plugins.withType<YarnPlugin> {
+                (extensions[YarnRootExtension.YARN] as YarnRootExtension).apply {
+                    version = "$version"
+                }
+            }
+            """
+        }
+
+        gradleBuildScript().appendText(
+            setYarnVersion("1.9.3")
+        )
 
         build("yarnConcreteVersionFolderChecker") {
             assertSuccessful()
@@ -444,13 +456,17 @@ class Kotlin2JsGradlePluginIT : BaseGradleIT() {
             )
         }
 
-        gradleBuildScript().appendText("\nyarn.version = \"1.9.2\"")
+        gradleBuildScript().appendText(
+            setYarnVersion("1.9.2")
+        )
 
         build("kotlinYarnSetup") {
             assertSuccessful()
         }
 
-        gradleBuildScript().appendText("\nyarn.version = \"1.9.3\"")
+        gradleBuildScript().appendText(
+            setYarnVersion("1.9.3")
+        )
 
         build("kotlinYarnSetup") {
             assertSuccessful()

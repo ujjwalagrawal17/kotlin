@@ -14,7 +14,7 @@ import org.jetbrains.kotlin.gradle.targets.js.nodejs.NodeJsRootPlugin
 import java.io.File
 
 open class YarnSetupTask : DefaultTask() {
-    private val settings = project.yarn
+    private val settings = YarnPlugin.apply(project.rootProject)
     private val env by lazy { settings.environment }
 
     @Suppress("MemberVisibilityCanBePrivate")

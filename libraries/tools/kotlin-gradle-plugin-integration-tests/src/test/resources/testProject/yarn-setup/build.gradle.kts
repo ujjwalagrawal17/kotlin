@@ -1,4 +1,6 @@
-import org.jetbrains.kotlin.gradle.targets.js.yarn.yarn
+import org.gradle.api.GradleException
+import org.jetbrains.kotlin.gradle.targets.js.yarn.YarnPlugin
+import org.jetbrains.kotlin.gradle.targets.js.yarn.YarnRootExtension
 
 plugins {
     kotlin("js") version "<pluginMarkerVersion>"
@@ -12,31 +14,33 @@ repositories {
     jcenter()
 }
 
-yarn
-
-tasks {
-    val yarnFolderRemove by registering {
-        doLast {
-            yarn.installationDir.deleteRecursively()
-        }
-    }
-
-    val yarnFolderCheck by registering {
-        dependsOn(getByName("kotlinYarnSetup"))
-
-        doLast {
-            if (!yarn.installationDir.exists()) {
-                throw GradleException()
+plugins.withType<YarnPlugin> {
+    (extensions[YarnRootExtension.YARN] as YarnRootExtension).apply {
+        tasks {
+            val yarnFolderRemove by registering {
+                doLast {
+                    installationDir.deleteRecursively()
+                }
             }
-        }
-    }
 
-    val yarnConcreteVersionFolderChecker by registering {
-        dependsOn(getByName("kotlinYarnSetup"))
+            val yarnFolderCheck by registering {
+                dependsOn(getByName("kotlinYarnSetup"))
 
-        doLast {
-            if (!yarn.installationDir.resolve("yarn-v1.9.3").exists()) {
-                throw GradleException()
+                doLast {
+                    if (!installationDir.exists()) {
+                        throw GradleException()
+                    }
+                }
+            }
+
+            val yarnConcreteVersionFolderChecker by registering {
+                dependsOn(getByName("kotlinYarnSetup"))
+
+                doLast {
+                    if (!installationDir.resolve("yarn-v1.9.3").exists()) {
+                        throw GradleException()
+                    }
+                }
             }
         }
     }

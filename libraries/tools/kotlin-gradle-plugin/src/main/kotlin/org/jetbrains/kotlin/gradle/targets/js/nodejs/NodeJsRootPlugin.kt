@@ -3,9 +3,9 @@ package org.jetbrains.kotlin.gradle.targets.js.nodejs
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.plugins.BasePlugin
-import org.gradle.api.tasks.Delete
 import org.jetbrains.kotlin.gradle.targets.js.nodejs.NodeJsRootExtension.Companion.EXTENSION_NAME
 import org.jetbrains.kotlin.gradle.targets.js.npm.tasks.KotlinNpmInstallTask
+import org.jetbrains.kotlin.gradle.targets.js.yarn.YarnPlugin
 
 open class NodeJsRootPlugin : Plugin<Project> {
     override fun apply(project: Project): Unit = project.run {
@@ -27,6 +27,8 @@ open class NodeJsRootPlugin : Plugin<Project> {
             it.group = TASKS_GROUP_NAME
             it.description = "Find, download and link NPM dependencies and projects"
         }
+
+        YarnPlugin.apply(project)
     }
 
     companion object {

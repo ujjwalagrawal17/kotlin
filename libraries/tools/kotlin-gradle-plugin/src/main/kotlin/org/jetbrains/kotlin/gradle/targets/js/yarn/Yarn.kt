@@ -10,9 +10,12 @@ import org.jetbrains.kotlin.gradle.targets.js.npm.NpmApi
 import org.jetbrains.kotlin.gradle.targets.js.npm.resolved.KotlinCompilationNpmResolution
 
 object Yarn : NpmApi {
-    private fun getDelegate(project: Project): NpmApi =
-        if (project.yarn.useWorkspaces) YarnWorkspaces
+    private fun getDelegate(project: Project): NpmApi {
+        val yarn = YarnPlugin.apply(project)
+
+        return if (yarn.useWorkspaces) YarnWorkspaces
         else YarnSimple
+    }
 
     override fun setup(project: Project) =
         getDelegate(project.rootProject).setup(project)
