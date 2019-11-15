@@ -37,7 +37,7 @@ abstract class KlibMetadataSerializer(
     val metadataVersion: BinaryVersion,
     val moduleDescriptor: ModuleDescriptor,
     val descriptorTable: DescriptorTable,
-    val skipExpects: Boolean
+    val skipExpects: Boolean = false
 ) {
 
     lateinit var serializerContext: SerializerContext
@@ -123,14 +123,11 @@ abstract class KlibMetadataSerializer(
     // This is done because deserialized member scope doesn't give us actuals
     // when it has a choice
     private fun List<DeclarationDescriptor>.filterOutExpectsWithActuals(): List<DeclarationDescriptor> {
-        return this.filter {
-            if (it.isExpectMember) {
-                require(it is MemberDescriptor)
-                ExpectedActualResolver.findActualForExpected(
-                    it,
-                    moduleDescriptor
-                )?.get(ExpectedActualResolver.Compatibility.Compatible) == null
-            } else true
+        val actualClassIds = this.filter{ !it.isExpectMember }.map { ClassId.topLevel(it.fqNameSafe) }
+        return this.filterNot {
+            // TODO: this only filters classes for now.
+            // Need to do the same for functions etc
+            (it is ClassDescriptor) && it.isExpect() && ClassId.topLevel(it.fqNameSafe) in actualClassIds
         }
     }
 
