@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2018 JetBrains s.r.o. and Kotlin Programming Language contributors.
+ * Copyright 2010-2019 JetBrains s.r.o. and Kotlin Programming Language contributors.
  * Use of this source code is governed by the Apache 2.0 license that can be found in the license/LICENSE.txt file.
  */
 
@@ -166,6 +166,7 @@ internal class InterfaceLowering(val context: JvmBackendContext) : IrElementTran
 
     private fun createDefaultImpl(function: IrSimpleFunction): IrSimpleFunction =
         context.declarationFactory.getDefaultImplsFunction(function).also { newFunction ->
+            newFunction.copyAttributes(function)
             newFunction.body = function.body?.patchDeclarationParents(newFunction)
             copyBodyToStatic(function, newFunction)
             newFunction.parentAsClass.declarations.add(newFunction)

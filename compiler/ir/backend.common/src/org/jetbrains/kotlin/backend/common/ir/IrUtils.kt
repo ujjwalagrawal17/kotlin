@@ -492,6 +492,7 @@ fun IrClass.addFakeOverrides() {
                 parent = this@addFakeOverrides
                 overriddenSymbols += overriddenFunctions.map { it.symbol }
                 copyParameterDeclarationsFrom(irFunction)
+                copyAttributes(irFunction)
             }
         }
 

@@ -6,7 +6,7 @@
 package org.jetbrains.kotlin.backend.common.lower
 
 import org.jetbrains.kotlin.backend.common.*
-import org.jetbrains.kotlin.backend.common.descriptors.*
+import org.jetbrains.kotlin.backend.common.descriptors.synthesizedString
 import org.jetbrains.kotlin.backend.common.ir.*
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibilities
@@ -22,7 +22,10 @@ import org.jetbrains.kotlin.ir.expressions.impl.*
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
-import org.jetbrains.kotlin.ir.types.*
+import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.defaultType
+import org.jetbrains.kotlin.ir.types.isNullable
+import org.jetbrains.kotlin.ir.types.makeNullable
 import org.jetbrains.kotlin.ir.util.*
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
@@ -382,6 +385,9 @@ private fun IrFunction.generateDefaultsFunctionImpl(context: CommonBackendContex
     newFunction.returnType = returnType.remapTypeParameters(classIfConstructor, newFunction.classIfConstructor)
     newFunction.dispatchReceiverParameter = dispatchReceiverParameter?.copyTo(newFunction)
     newFunction.extensionReceiverParameter = extensionReceiverParameter?.copyTo(newFunction)
+    if (this is IrAttributeContainer) {
+        (newFunction as? IrAttributeContainer)?.copyAttributes(this)
+    }
 
     valueParameters.mapTo(newFunction.valueParameters) {
         val newType = it.type.remapTypeParameters(classIfConstructor, newFunction.classIfConstructor)
