@@ -5,61 +5,47 @@
 
 package org.jetbrains.kotlin.idea.debugger
 
-import com.intellij.debugger.engine.JavaStackFrame
-import com.intellij.debugger.engine.SuspendContextImpl
+import com.intellij.debugger.engine.*
 import com.intellij.debugger.engine.evaluation.EvaluationContextImpl
 import com.intellij.debugger.jdi.StackFrameProxyImpl
 import com.intellij.debugger.memory.utils.StackFrameItem
 import com.sun.jdi.*
 import org.jetbrains.kotlin.idea.debugger.evaluate.ExecutionContext
 
-class KotlinCoroutinesAsyncStackTraceProvider : KotlinCoroutinesAsyncStackTraceProviderBase {
-    private companion object {
-        const val DEBUG_METADATA_KT = "kotlin.coroutines.jvm.internal.DebugMetadataKt"
-    }
-
+class KotlinCoroutinesAsyncStackTraceProvider : AsyncStackTraceProvider {
 
     override fun getAsyncStackTrace(stackFrame: JavaStackFrame, suspendContext: SuspendContextImpl): List<StackFrameItem>? {
-        return hopelessAware { getAsyncStackTraceSafe(stackFrame.stackFrameProxy, suspendContext) }
+        val stackFrameList = hopelessAware { getAsyncStackTraceSafe(stackFrame.stackFrameProxy, suspendContext) } ?: emptyList()
+        return null
     }
 
-    fun getAsyncStackTraceSafe(frameProxy: StackFrameProxyImpl, suspendContext: SuspendContextImpl): List<StackFrameItem>? {
-        val location = frameProxy.location()
-        if (!location.isInKotlinSources()) {
-            return null
-        }
+    fun getAsyncStackTraceSafe(frameProxy: StackFrameProxyImpl, suspendContext: SuspendContext): List<StackFrameItem> {
+        val defaultResult = emptyList<StackFrameItem>()
 
-        val method = location.safeMethod() ?: return null
+        val location = frameProxy.location()
+        if (!location.isInKotlinSources())
+            return defaultResult
+
+        val method = location.safeMethod() ?: return defaultResult
         val threadReference = frameProxy.threadProxy().threadReference
 
-        if (threadReference == null || !threadReference.isSuspended || !suspendContext.debugProcess.canRunEvaluation) {
-            return null
-        }
+        if (threadReference == null || !threadReference.isSuspended || !(suspendContext.debugProcess as DebugProcessImpl).canRunEvaluation)
+            return defaultResult
 
-        val context = createExecutionContext(suspendContext, frameProxy)
 
+        val astContext = createAsyncStackTraceContext(frameProxy, suspendContext, method)
+        return astContext.getAsyncStackTraceIfAny()
+    }
+
+    private fun createAsyncStackTraceContext(
+        frameProxy: StackFrameProxyImpl,
+        suspendContext: SuspendContext,
+        method: Method
+    ): AsyncStackTraceContext {
+        val evaluationContext = EvaluationContextImpl(suspendContext as SuspendContextImpl, frameProxy)
+        val context = ExecutionContext(evaluationContext, frameProxy)
         // DebugMetadataKt not found, probably old kotlin-stdlib version
-        val debugMetadataKtType = findDebugMetadata(context) ?: return null
-
-        val asyncContext = AsyncStackTraceContext(context, method, debugMetadataKtType)
-        return asyncContext.getAsyncStackTraceForSuspendLambda() ?: asyncContext.getAsyncStackTraceForSuspendFunction()
-    }
-
-    private fun findDebugMetadata(context: ExecutionContext): ClassType? = context.findClassSafe(DEBUG_METADATA_KT)
-
-    private fun createExecutionContext(
-        suspendContext: SuspendContextImpl,
-        frameProxy: StackFrameProxyImpl
-    ): ExecutionContext {
-        val evaluationContext = EvaluationContextImpl(suspendContext, frameProxy)
-        return ExecutionContext(evaluationContext, frameProxy)
+        return AsyncStackTraceContext(context, method)
     }
 }
 
-internal fun ExecutionContext.findClassSafe(className: String): ClassType? {
-    return try {
-        findClass(className) as? ClassType
-    } catch (e: Throwable) {
-        null
-    }
-}

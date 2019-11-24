@@ -16,46 +16,50 @@ import com.intellij.xdebugger.frame.XNamedValue
 import org.jetbrains.kotlin.idea.debugger.evaluate.ExecutionContext
 import com.sun.jdi.*
 import org.jetbrains.kotlin.codegen.coroutines.CONTINUATION_VARIABLE_NAME
+import org.jetbrains.kotlin.idea.debugger.coroutines.util.logger
 
 class AsyncStackTraceContext(
     val context: ExecutionContext,
-    val method: Method,
-    private val debugMetadataKtType: ClassType
-) {
+    val method: Method) {
+    val log by logger
+    val debugMetadataKtType = context.findClassSafe(DEBUG_METADATA_KT)!!
 
-    fun getAsyncStackTraceForSuspendLambda() : List<StackFrameItem>? {
-        if (method.name() != "invokeSuspend" || method.signature() != "(Ljava/lang/Object;)Ljava/lang/Object;") {
-            return null
-        }
-
-        val thisObject = context.frameProxy.thisObject() ?: return null
-        val thisType = thisObject.referenceType()
-
-        if (SUSPEND_LAMBDA_CLASSES.none { thisType.isSubtype(it) }) {
-            return null
-        }
-
-        return collectFrames(thisObject)
+    private companion object {
+        const val DEBUG_METADATA_KT = "kotlin.coroutines.jvm.internal.DebugMetadataKt"
     }
 
-    fun getAsyncStackTraceForSuspendFunction(): List<StackFrameItem>? {
-        if ("Lkotlin/coroutines/Continuation;)" !in method.signature()) {
-            return null
-        }
-
-        val frameProxy = context.frameProxy
-        val continuationVariable = frameProxy.safeVisibleVariableByName(CONTINUATION_VARIABLE_NAME) ?: return null
-        val continuation = frameProxy.getValue(continuationVariable) as? ObjectReference ?: return null
-        context.keepReference(continuation)
-
-        return collectFrames(continuation)
-    }
-
-    private fun collectFrames(continuation: ObjectReference): List<StackFrameItem>? {
+    fun getAsyncStackTraceIfAny() : List<StackFrameItem> {
+        val continuation = locateContinuation() ?: return emptyList()
         val frames = mutableListOf<StackFrameItem>()
         collectFramesRecursively(continuation, frames)
-        return frames
+        return frames;
     }
+
+    private fun locateContinuation() : ObjectReference? {
+        val continuation : ObjectReference?
+        if (isInvokeSuspendMethod(method)) {
+            continuation = context.frameProxy.thisObject() ?: return null
+            if (!isSuspendLambda(continuation.referenceType()))
+                return null
+        } else if (isContinuationProvider(method)) {
+            val frameProxy = context.frameProxy
+            val continuationVariable = frameProxy.safeVisibleVariableByName(CONTINUATION_VARIABLE_NAME) ?: return null
+            continuation = frameProxy.getValue(continuationVariable) as? ObjectReference ?: return null
+            context.keepReference(continuation)
+        } else {
+            continuation = null
+        }
+        return continuation
+    }
+
+    private fun isInvokeSuspendMethod(method: Method): Boolean =
+        method.name() == "invokeSuspend" && method.signature() == "(Ljava/lang/Object;)Ljava/lang/Object;"
+
+    private fun isContinuationProvider(method: Method): Boolean =
+        "Lkotlin/coroutines/Continuation;)" in method.signature()
+
+    private fun isSuspendLambda(referenceType: ReferenceType): Boolean =
+        SUSPEND_LAMBDA_CLASSES.any { referenceType.isSubtype(it) }
 
     private fun collectFramesRecursively(continuation: ObjectReference, consumer: MutableList<StackFrameItem>) {
         val continuationType = continuation.referenceType() as? ClassType ?: return
@@ -74,44 +78,33 @@ class AsyncStackTraceContext(
     }
 
     private fun getLocation(continuation: ObjectReference): Location? {
-        val getStackTraceElementMethod = debugMetadataKtType.methodsByName(
-            "getStackTraceElement",
-            "(Lkotlin/coroutines/jvm/internal/BaseContinuationImpl;)Ljava/lang/StackTraceElement;"
-        ).firstOrNull() ?: return null
+        val stackTraceElementInstance = invokeGetStackTraceElement(continuation) ?: return null
+        return createLocation(stackTraceElementInstance)
+    }
 
-        val args = listOf(continuation)
-
-        val stackTraceElement = context.invokeMethod(debugMetadataKtType, getStackTraceElementMethod, args) as? ObjectReference
-            ?: return null
-
-        context.keepReference(stackTraceElement)
-
-        val stackTraceElementType = stackTraceElement.referenceType().takeIf { it.name() == StackTraceElement::class.java.name }
-            ?: return null
-
-        fun getValue(name: String, desc: String): Value? {
-            val method = stackTraceElementType.methodsByName(name, desc).single()
-            return context.invokeMethod(stackTraceElement, method, emptyList())
-        }
-
-        val className = (getValue("getClassName", "()Ljava/lang/String;") as? StringReference)?.value() ?: return null
-        val methodName = (getValue("getMethodName", "()Ljava/lang/String;") as? StringReference)?.value() ?: return null
-        val lineNumber = (getValue("getLineNumber", "()I") as? IntegerValue)?.value()?.takeIf { it >= 0 } ?: return null
-
+    private fun createLocation(instance: ObjectReference) : GeneratedLocation? {
+        val className = context.invokeMethodAsString(instance, "getClassName") ?: return null
+        val methodName = context.invokeMethodAsString(instance, "getMethodName") ?: return null
+        val lineNumber = context.invokeMethodAsInt(instance,"getLineNumber") ?: return null
         val locationClass = context.findClassSafe(className) ?: return null
+        log.warn("Got location of ${className}.${methodName}:${lineNumber} in ${locationClass}")
         return GeneratedLocation(context.debugProcess, locationClass, methodName, lineNumber)
     }
 
-    fun getSpilledVariables(continuation: ObjectReference): List<XNamedValue>? {
-        val getSpilledVariableFieldMappingMethod = debugMetadataKtType.methodsByName(
-            "getSpilledVariableFieldMapping",
-            "(Lkotlin/coroutines/jvm/internal/BaseContinuationImpl;)[Ljava/lang/String;"
-        ).firstOrNull() ?: return null
+    private fun invokeGetStackTraceElement(continuation: ObjectReference): ObjectReference? {
+        val stackTraceElement =
+            context.invokeMethodAsObject(debugMetadataKtType, "getStackTraceElement", continuation) ?: return null
+        // redundant i believe
+        stackTraceElement.referenceType().takeIf { it.name() == StackTraceElement::class.java.name } ?: return null
 
-        val args = listOf(continuation)
+        context.keepReference(stackTraceElement)
+        return stackTraceElement
+    }
 
-        val rawSpilledVariables = context.invokeMethod(debugMetadataKtType, getSpilledVariableFieldMappingMethod, args) as? ArrayReference
-            ?: return null
+    private fun getSpilledVariables(continuation: ObjectReference): List<XNamedValue>? {
+
+        val rawSpilledVariables =
+            context.invokeMethodAsArray(debugMetadataKtType, "getSpilledVariableFieldMapping", "(Lkotlin/coroutines/jvm/internal/BaseContinuationImpl;)[Ljava/lang/String;", continuation) as? ArrayReference ?: return null
 
         context.keepReference(rawSpilledVariables)
 

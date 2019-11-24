@@ -15,11 +15,10 @@ import org.jetbrains.plugins.gradle.service.project.AbstractProjectResolverExten
 class KotlinGradleCoroutineDebugProjectResolver : AbstractProjectResolverExtension() {
     val log = Logger.getInstance(this::class.java)
 
-    override fun enhanceTaskProcessing(taskNames: MutableList<String>, jvmParametersSetup: String?, initScriptConsumer: Consumer<String>, testExecutionExpected: Boolean) {
+    override fun enhanceTaskProcessing(taskNames: MutableList<String>, jvmParametersSetup: String?, initScriptConsumer: Consumer<String>) {
         try {
-            if (testExecutionExpected && coroutineDebuggerEnabled()) {
+            if (coroutineDebuggerEnabled())
                 setupCoroutineAgentForJvmForkedTestTasks(initScriptConsumer)
-            }
         } catch (e: Exception) {
             log.error("Gradle: not possible to attach coroutine debugger agent. Coroutine debugger disabled.", e)
         }
@@ -29,7 +28,7 @@ class KotlinGradleCoroutineDebugProjectResolver : AbstractProjectResolverExtensi
         val lines = arrayOf(
             "gradle.taskGraph.beforeTask { Task task ->",
             "  if (task instanceof Test) {",
-            "    def kotlinxCoroutinesDebugJar = task.classpath.find { it.name.contains(\"kotlinx-coroutines-debug\") }",
+            "    def kotlinxCoroutinesDebugJar = task.classpath.find { it.name.startsWith(\"kotlinx-coroutines-debug\") }",
             "    if (kotlinxCoroutinesDebugJar)",
             "        task.jvmArgs (\"-javaagent:\${kotlinxCoroutinesDebugJar?.absolutePath}\", \"-ea\")",
             "  }",
@@ -39,5 +38,6 @@ class KotlinGradleCoroutineDebugProjectResolver : AbstractProjectResolverExtensi
         initScriptConsumer.consume(script)
     }
 
+    // supposed to be the same as [CoroutineProjectConnectionListener.kt].coroutineDebuggerEnabled
     private fun coroutineDebuggerEnabled() = Registry.`is`("kotlin.debugger.coroutines")
 }

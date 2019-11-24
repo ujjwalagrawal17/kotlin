@@ -3,7 +3,7 @@
  * Use of this source code is governed by the Apache 2.0 license that can be found in the license/LICENSE.txt file.
  */
 
-package org.jetbrains.kotlin.idea.debugger.coroutines
+package org.jetbrains.kotlin.idea.debugger.coroutines.view
 
 import com.intellij.codeInsight.highlighting.HighlightManager
 import com.intellij.execution.ui.ConsoleView
@@ -32,6 +32,7 @@ import com.intellij.ui.components.JBList
 import com.intellij.unscramble.AnalyzeStacktraceUtil
 import com.intellij.util.PlatformIcons
 import com.intellij.util.ui.EmptyIcon
+import org.jetbrains.kotlin.idea.debugger.coroutines.data.CoroutineState
 import java.awt.BorderLayout
 import java.awt.Color
 import java.awt.datatransfer.StringSelection
@@ -80,7 +81,8 @@ class CoroutineDumpPanel(project: Project, consoleView: ConsoleView, toolbarActi
             }
         }
 
-        exporterToTextFile = MyToFileExporter(project, dump)
+        exporterToTextFile =
+            MyToFileExporter(project, dump)
 
         val filterAction = FilterAction().apply {
             registerCustomShortcutSet(
@@ -90,7 +92,9 @@ class CoroutineDumpPanel(project: Project, consoleView: ConsoleView, toolbarActi
         }
         toolbarActions.apply {
             add(filterAction)
-            add(CopyToClipboardAction(dump, project))
+            add(
+                CopyToClipboardAction(dump, project)
+            )
             add(ActionManager.getInstance().getAction(IdeActions.ACTION_EXPORT_TO_TEXT_FILE))
             add(MergeStackTracesAction())
         }
@@ -184,8 +188,8 @@ class CoroutineDumpPanel(project: Project, consoleView: ConsoleView, toolbarActi
 
     private fun getAttributes(state: CoroutineState): SimpleTextAttributes {
         return when {
-            state.isSuspended -> SimpleTextAttributes.GRAY_ATTRIBUTES
-            state.isEmptyStackTrace -> SimpleTextAttributes(SimpleTextAttributes.STYLE_PLAIN, Color.GRAY.brighter())
+            state.isSuspended() -> SimpleTextAttributes.GRAY_ATTRIBUTES
+            state.isEmptyStackTrace() -> SimpleTextAttributes(SimpleTextAttributes.STYLE_PLAIN, Color.GRAY.brighter())
             else -> SimpleTextAttributes.REGULAR_ATTRIBUTES
 
         }
