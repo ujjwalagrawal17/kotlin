@@ -385,9 +385,6 @@ private fun IrFunction.generateDefaultsFunctionImpl(context: CommonBackendContex
     newFunction.returnType = returnType.remapTypeParameters(classIfConstructor, newFunction.classIfConstructor)
     newFunction.dispatchReceiverParameter = dispatchReceiverParameter?.copyTo(newFunction)
     newFunction.extensionReceiverParameter = extensionReceiverParameter?.copyTo(newFunction)
-    if (this is IrAttributeContainer) {
-        (newFunction as? IrAttributeContainer)?.copyAttributes(this)
-    }
 
     valueParameters.mapTo(newFunction.valueParameters) {
         val newType = it.type.remapTypeParameters(classIfConstructor, newFunction.classIfConstructor)
