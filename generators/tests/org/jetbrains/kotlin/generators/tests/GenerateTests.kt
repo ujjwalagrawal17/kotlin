@@ -59,7 +59,6 @@ import org.jetbrains.kotlin.idea.debugger.*
 import org.jetbrains.kotlin.idea.debugger.evaluate.*
 import org.jetbrains.kotlin.idea.debugger.test.sequence.exec.AbstractSequenceTraceTestCase
 import org.jetbrains.kotlin.idea.debugger.test.*
-import org.jetbrains.kotlin.idea.debugger.test.AbstractFileRankingTest
 import org.jetbrains.kotlin.idea.decompiler.navigation.AbstractNavigateToDecompiledLibraryTest
 import org.jetbrains.kotlin.idea.decompiler.navigation.AbstractNavigateToLibrarySourceTest
 import org.jetbrains.kotlin.idea.decompiler.navigation.AbstractNavigateToLibrarySourceTestWithJS
@@ -220,6 +219,10 @@ fun main(args: Array<String>) {
 
         testClass<AbstractFileRankingTest> {
             model("fileRanking")
+        }
+
+        testClass<AbstractIrFileRankingTest> {
+            model("fileRanking", targetBackend = TargetBackend.JVM_IR)
         }
 
         testClass<AbstractAsyncStackTraceTest> {
