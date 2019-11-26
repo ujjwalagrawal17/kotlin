@@ -531,11 +531,7 @@ private class AddContinuationLowering(private val context: JvmBackendContext) : 
                 val newFunction = if (function.isOverridable) {
                     // Create static method for the suspend state machine method so that reentering the method
                     // does not lead to virtual dispatch to the wrong method.
-                    if (functionsToAdd[function.parentAsClass] == null) {
-                        functionsToAdd[function.parentAsClass] = mutableSetOf(function)
-                    } else {
-                        functionsToAdd[function.parentAsClass]!! += function
-                    }
+                    functionsToAdd.getOrPut(function.parentAsClass) { mutableSetOf() }.add(function)
                     createStaticSuspendImpl(function)
                 } else function
 
