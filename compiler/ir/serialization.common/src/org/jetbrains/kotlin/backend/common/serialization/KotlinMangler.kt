@@ -6,6 +6,7 @@
 package org.jetbrains.kotlin.backend.common.serialization
 
 import org.jetbrains.kotlin.backend.common.ir.isExpect
+import org.jetbrains.kotlin.backend.common.ir.isProperExpect
 import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.symbols.IrTypeParameterSymbol
@@ -244,7 +245,7 @@ abstract class KotlinManglerImpl : KotlinMangler {
     } + expectPart
 
     // TODO: need to figure out the proper OptionalExpectation behavior
-    private val IrDeclaration.expectPart get() = if (this.isExpect /*&& !(this.descriptor.isSerializableExpectClass)*/) "#expect" else ""
+    private val IrDeclaration.expectPart get() = if (this.isProperExpect) "#expect" else ""
 
     private val IrDeclarationParent.fqNameUnique: FqName
         get() = when (this) {

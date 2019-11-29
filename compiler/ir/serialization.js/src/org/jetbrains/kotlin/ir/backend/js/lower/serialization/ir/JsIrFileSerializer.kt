@@ -9,13 +9,16 @@ import org.jetbrains.kotlin.backend.common.LoggingContext
 import org.jetbrains.kotlin.backend.common.serialization.IrFileSerializer
 import org.jetbrains.kotlin.backend.common.serialization.DeclarationTable
 import org.jetbrains.kotlin.ir.declarations.IrProperty
+import org.jetbrains.kotlin.descriptors.DeclarationDescriptor
+import org.jetbrains.kotlin.ir.symbols.IrSymbol
 
 class JsIrFileSerializer(
     logger: LoggingContext,
     declarationTable: DeclarationTable,
+    private val expectDescriptorToSymbol: MutableMap<DeclarationDescriptor, IrSymbol>,
     skipExpects: Boolean,
     bodiesOnlyForInlines: Boolean = false
-) : IrFileSerializer(logger, declarationTable, bodiesOnlyForInlines = bodiesOnlyForInlines, skipExpects = skipExpects) {
+) : IrFileSerializer(logger, declarationTable, expectDescriptorToSymbol, bodiesOnlyForInlines = bodiesOnlyForInlines, skipExpects = skipExpects) {
 
     // Temporary keep order of any property, even of constants
     override fun keepOrderOfProperties(property: IrProperty): Boolean = true

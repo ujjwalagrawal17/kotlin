@@ -3,6 +3,8 @@ package org.jetbrains.kotlin.psi2ir.generators
 import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.*
+import org.jetbrains.kotlin.ir.symbols.IrSymbol
+import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.util.SymbolTable
 import org.jetbrains.kotlin.ir.visitors.IrElementVisitorVoid
 import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
@@ -10,10 +12,10 @@ import org.jetbrains.kotlin.ir.visitors.acceptVoid
 import org.jetbrains.kotlin.resolve.descriptorUtil.module
 import org.jetbrains.kotlin.resolve.multiplatform.findExpects
 
-// Need to create unbound symbols for expects corresponding to actuals of compiled module.
+// Need to create unbound symbols for expects corresponding to actuals of the currently compiled module.
 // This is neccessary because there is no explicit links between expects and actuals
 // neither in descriptors nor in IR.
-fun referenceExpectsForUsedActuals(symbolTable: SymbolTable, irModule: IrModuleFragment) {
+fun referenceExpectsForUsedActuals(expectDescriptroToSymbol: MutableMap<DeclarationDescriptor, IrSymbol>, symbolTable: SymbolTable, irModule: IrModuleFragment) {
     irModule.acceptVoid(object : IrElementVisitorVoid {
 
         private fun <T> T.forEachExpect(body: (DeclarationDescriptor) -> Unit) where T: IrDeclaration {
@@ -26,27 +28,58 @@ fun referenceExpectsForUsedActuals(symbolTable: SymbolTable, irModule: IrModuleF
             element.acceptChildrenVoid(this)
         }
         override fun visitClass(declaration: IrClass) {
-            declaration.forEachExpect { symbolTable.referenceClass(it as ClassDescriptor) }
+            declaration.forEachExpect {
+                val symbol = symbolTable.referenceClass(it as ClassDescriptor)
+                expectDescriptroToSymbol.put(it, symbol);
+                it.constructors.forEach {
+                    expectDescriptroToSymbol.put(it, symbolTable.referenceConstructor(it as ClassConstructorDescriptor))
+                }
+            }
             super.visitDeclaration(declaration)
         }
         override fun visitSimpleFunction(declaration: IrSimpleFunction) {
-            declaration.forEachExpect { symbolTable.referenceSimpleFunction(it as FunctionDescriptor) }
+            declaration.forEachExpect {
+                val symbol = symbolTable.referenceSimpleFunction(it as FunctionDescriptor);
+                expectDescriptroToSymbol.put(it, symbol);
+            }
             super.visitDeclaration(declaration)
         }
         override fun visitConstructor(declaration: IrConstructor) {
-            declaration.forEachExpect { symbolTable.referenceConstructor(it as ClassConstructorDescriptor) }
+            declaration.forEachExpect {
+                val symbol = symbolTable.referenceConstructor(it as ClassConstructorDescriptor)
+                expectDescriptroToSymbol.put(it, symbol);
+            
+            }
             super.visitDeclaration(declaration)
         }
         override fun visitProperty(declaration: IrProperty) {
-            declaration.forEachExpect { symbolTable.referenceProperty(it as PropertyDescriptor) }
+            declaration.forEachExpect {
+                val symbol = symbolTable.referenceProperty(it as PropertyDescriptor)
+                expectDescriptroToSymbol.put(it, symbol);
+            }
+            super.visitDeclaration(declaration)
+        }
+        override fun visitEnumEntry(declaration: IrEnumEntry) {
+            declaration.forEachExpect {
+                val symbol = symbolTable.referenceEnumEntry(it as ClassDescriptor)
+                expectDescriptroToSymbol.put(it, symbol);
+
+            }
             super.visitDeclaration(declaration)
         }
         override fun visitTypeAlias(declaration: IrTypeAlias) {
+            // Force actual type alias right hand side deserialization.
+            if (declaration.isActual) {
+                declaration.expandedType.classOrNull?.descriptor?.let { symbolTable.referenceClass(it) }
+            }
+
             declaration.forEachExpect {
-                when (it) {
+                val symbol = when (it) {
                     is ClassDescriptor -> symbolTable.referenceClass(it)
                     else -> error("Unexpected expect for actual type alias: $it")
                 }
+                expectDescriptroToSymbol.put(it, symbol);
+
             }
             super.visitDeclaration(declaration)
         }

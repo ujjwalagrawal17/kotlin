@@ -18,6 +18,7 @@ import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
 import org.jetbrains.kotlin.ir.visitors.acceptVoid
 import org.jetbrains.kotlin.library.SerializedIrFile
 import org.jetbrains.kotlin.library.SerializedIrModule
+import org.jetbrains.kotlin.resolve.multiplatform.findExpects
 
 
 abstract class IrModuleSerializer<F : IrFileSerializer>(protected val logger: LoggingContext) {
@@ -30,24 +31,6 @@ abstract class IrModuleSerializer<F : IrFileSerializer>(protected val logger: Lo
     }
 
     fun serializedIrModule(module: IrModuleFragment): SerializedIrModule {
-
-        // Since ExpectActualResolver is descriptor based we need to keep
-        // descriptor-to-symbol correspondence.
-        module.files.forEach { file ->
-            file.acceptVoid(object : IrElementVisitorVoid {
-                override fun visitElement(element: IrElement) {
-                    element.acceptChildrenVoid(this)
-                }
-                override fun visitDeclaration(declaration: IrDeclaration) {
-                    if (declaration.isProperExpect) {
-                        expectDescriptorToSymbol.put(declaration.descriptor, (declaration as IrSymbolOwner).symbol)
-                    }
-                    super.visitDeclaration(declaration)
-                }
-            })
-        }
-
-
         return SerializedIrModule(
             module.files.filter { it.packageFragmentDescriptor !is FunctionInterfacePackageFragment }.map {
                 serializeIrFile(it)

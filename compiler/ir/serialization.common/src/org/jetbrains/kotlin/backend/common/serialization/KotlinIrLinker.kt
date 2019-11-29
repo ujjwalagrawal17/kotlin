@@ -44,18 +44,13 @@ import org.jetbrains.kotlin.backend.common.serialization.proto.IrConstructorCall
 import org.jetbrains.kotlin.backend.common.serialization.proto.ExpectActualTable as ProtoExpectActualTable
 import org.jetbrains.kotlin.backend.common.serialization.proto.Actual as ProtoActual
 
-
-// TODO: don't make it global
-val expectDescriptorToSymbol = mutableMapOf<DeclarationDescriptor, IrSymbol>()
-
 abstract class KotlinIrLinker(
     val logger: LoggingContext,
     val builtIns: IrBuiltIns,
     val symbolTable: SymbolTable,
     private val exportedDependencies: List<ModuleDescriptor>,
     private val forwardModuleDescriptor: ModuleDescriptor?,
-    mangler: KotlinMangler,
-    val expectDescriptorToSymbol: MutableMap<DeclarationDescriptor, IrSymbol>
+    mangler: KotlinMangler
 ) : DescriptorUniqIdAware, IrDeserializer {
 
     val expectUniqIdToActualProto =
@@ -151,7 +146,7 @@ abstract class KotlinIrLinker(
             val actuals: List<ProtoActual>,
             private val fileIndex: Int,
             onlyHeaders: Boolean
-        ) : IrFileDeserializer(logger, builtIns, symbolTable, expectDescriptorToSymbol) {
+        ) : IrFileDeserializer(logger, builtIns, symbolTable) {
 
             private var fileLoops = mutableMapOf<Int, IrLoopBase>()
 
@@ -209,10 +204,6 @@ abstract class KotlinIrLinker(
 
             private fun loadStringProto(index: Int): String {
                 return String(readString(moduleDescriptor, fileIndex, index))
-            }
-
-            private fun loadExpectActuals() {
-                ProtoExpectActualTable.parseFrom(readExpectActualTable(moduleDescriptor))
             }
 
             private fun referenceDeserializedSymbol(

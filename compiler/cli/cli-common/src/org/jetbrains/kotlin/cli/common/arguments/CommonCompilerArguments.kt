@@ -314,7 +314,7 @@ abstract class CommonCompilerArguments : CommonToolArguments() {
     var useMixedNamedArguments: Boolean by FreezableVar(false)
 
     @Argument(
-        value = "-Xmpp-klibs",
+        value = "-Xklib-mpp",
         description = "Enable experimental support for multi-platform klib libraries"
     )
     var mppKlibs: Boolean by FreezableVar(false)
