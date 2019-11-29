@@ -26,8 +26,8 @@ import org.jetbrains.kotlin.fir.visitors.*
 class FirAnonymousObjectImpl(
     override val source: FirSourceElement?,
     override val session: FirSession,
-    override val symbol: FirAnonymousObjectSymbol,
-    override val classKind: ClassKind = ClassKind.OBJECT
+    override val classKind: ClassKind,
+    override val symbol: FirAnonymousObjectSymbol
 ) : FirAnonymousObject(), FirModifiableClass<FirAnonymousObject>, FirAbstractAnnotatedElement {
     override var resolvePhase: FirResolvePhase = FirResolvePhase.RAW_FIR
     override val superTypeRefs: MutableList<FirTypeRef> = mutableListOf()

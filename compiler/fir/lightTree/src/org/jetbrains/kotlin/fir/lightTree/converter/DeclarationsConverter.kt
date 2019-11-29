@@ -479,7 +479,7 @@ class DeclarationsConverter(
         val delegatedType = delegatedSuperTypeRef ?: implicitAnyType
 
         return withChildClassName(ANONYMOUS_OBJECT_NAME) {
-            FirAnonymousObjectImpl(null, session, FirAnonymousObjectSymbol()).apply {
+            FirAnonymousObjectImpl(null, session, ClassKind.OBJECT, FirAnonymousObjectSymbol()).apply {
                 annotations += modifiers.annotations
                 this.superTypeRefs += superTypeRefs
                 this.typeRef = superTypeRefs.first()

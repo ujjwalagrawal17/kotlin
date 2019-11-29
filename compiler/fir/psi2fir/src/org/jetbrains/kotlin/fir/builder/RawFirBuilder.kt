@@ -452,8 +452,8 @@ class RawFirBuilder(session: FirSession, val stubMode: Boolean) : BaseFirBuilder
             val obj = FirAnonymousObjectImpl(
                 source = toFirSourceElement(),
                 session,
-                FirAnonymousObjectSymbol(),
-                ClassKind.ENUM_ENTRY
+                ClassKind.ENUM_ENTRY,
+                FirAnonymousObjectSymbol()
             )
 
             extractSuperTypeListEntriesTo(obj, null, delegatedEnumSelfTypeRef, ClassKind.ENUM_ENTRY)
@@ -596,7 +596,7 @@ class RawFirBuilder(session: FirSession, val stubMode: Boolean) : BaseFirBuilder
         override fun visitObjectLiteralExpression(expression: KtObjectLiteralExpression, data: Unit): FirElement {
             val objectDeclaration = expression.objectDeclaration
             return withChildClassName(ANONYMOUS_OBJECT_NAME) {
-                FirAnonymousObjectImpl(expression.toFirSourceElement(), session, FirAnonymousObjectSymbol()).apply {
+                FirAnonymousObjectImpl(expression.toFirSourceElement(), session, ClassKind.OBJECT, FirAnonymousObjectSymbol()).apply {
                     objectDeclaration.extractAnnotationsTo(this)
                     objectDeclaration.extractSuperTypeListEntriesTo(this, null, null, ClassKind.CLASS)
                     this.typeRef = superTypeRefs.first() // TODO

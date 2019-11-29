@@ -67,10 +67,6 @@ object ImplementationConfigurator : AbstractFirTreeImplementationConfigurator() 
 
         impl(anonymousObject) {
             parents += modifiableClass.withArg(anonymousObject)
-            default("classKind") {
-                value = "ClassKind.OBJECT"
-                withGetter = true
-            }
         }
 
         impl(enumEntry) {
