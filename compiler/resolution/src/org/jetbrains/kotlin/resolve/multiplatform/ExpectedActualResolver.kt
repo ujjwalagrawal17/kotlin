@@ -560,3 +560,9 @@ object ExpectedActualResolver {
     }
 }
 
+fun DeclarationDescriptor.findExpects(): List<MemberDescriptor> {
+    return ExpectedActualResolver.findExpectedForActual(
+        this as MemberDescriptor,
+        this.module,
+        { true })?.get(ExpectedActualResolver.Compatibility.Compatible).orEmpty()
+}

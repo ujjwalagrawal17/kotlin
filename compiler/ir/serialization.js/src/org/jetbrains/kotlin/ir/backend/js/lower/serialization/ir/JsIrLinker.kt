@@ -14,6 +14,7 @@ import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.descriptors.konan.kotlinLibrary
 import org.jetbrains.kotlin.ir.descriptors.IrBuiltIns
 import org.jetbrains.kotlin.ir.util.KotlinMangler
+import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.util.SymbolTable
 import org.jetbrains.kotlin.ir.util.UniqId
 import org.jetbrains.kotlin.resolve.descriptorUtil.isPublishedApi
@@ -23,8 +24,9 @@ class JsIrLinker(
     mangler: KotlinMangler,
     logger: LoggingContext,
     builtIns: IrBuiltIns,
-    symbolTable: SymbolTable
-) : KotlinIrLinker(logger, builtIns, symbolTable, emptyList(), null, mangler),
+    symbolTable: SymbolTable,
+    expectDescriptorToSymbol: MutableMap<DeclarationDescriptor, IrSymbol>
+) : KotlinIrLinker(logger, builtIns, symbolTable, emptyList(), null, mangler, expectDescriptorToSymbol),
     DescriptorUniqIdAware by DeserializedDescriptorUniqIdAware {
 
     override val descriptorReferenceDeserializer =

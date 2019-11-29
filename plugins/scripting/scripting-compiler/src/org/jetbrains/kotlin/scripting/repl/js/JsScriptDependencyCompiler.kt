@@ -5,6 +5,7 @@
 
 package org.jetbrains.kotlin.scripting.repl.js
 
+import org.jetbrains.kotlin.backend.common.serialization.expectDescriptorToSymbol
 import org.jetbrains.kotlin.builtins.KotlinBuiltIns
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.config.LanguageVersionSettingsImpl
@@ -46,7 +47,7 @@ class JsScriptDependencyCompiler(
         }
 
         val irBuiltIns = IrBuiltIns(builtIns, typeTranslator, symbolTable)
-        val jsLinker = JsIrLinker(moduleDescriptor, JsMangler, emptyLoggingContext, irBuiltIns, symbolTable)
+        val jsLinker = JsIrLinker(moduleDescriptor, JsMangler, emptyLoggingContext, irBuiltIns, symbolTable, expectDescriptorToSymbol)
 
         val moduleFragment = IrModuleFragmentImpl(moduleDescriptor, irBuiltIns)
         val irDependencies = dependencies.map { jsLinker.deserializeFullModule(it) }

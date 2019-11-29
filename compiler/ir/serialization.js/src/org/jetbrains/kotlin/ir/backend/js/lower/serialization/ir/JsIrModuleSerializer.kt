@@ -17,8 +17,7 @@ class JsIrModuleSerializer(
     irBuiltIns: IrBuiltIns,
     private val descriptorTable: DescriptorTable,
     val skipExpects: Boolean
-) :
-    IrModuleSerializer<JsIrFileSerializer>(logger) {
+) : IrModuleSerializer<JsIrFileSerializer>(logger) {
 
     private val globalDeclarationTable = JsGlobalDeclarationTable(irBuiltIns)
 

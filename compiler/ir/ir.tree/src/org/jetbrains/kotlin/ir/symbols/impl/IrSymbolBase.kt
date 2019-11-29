@@ -16,6 +16,7 @@
 
 package org.jetbrains.kotlin.ir.symbols.impl
 
+import org.jetbrains.kotlin.backend.common.descriptors.WrappedDeclarationDescriptor
 import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.descriptors.*

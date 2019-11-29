@@ -243,7 +243,8 @@ abstract class KotlinManglerImpl : KotlinMangler {
         else -> error("Unexpected exported declaration: $this")
     } + expectPart
 
-    private val IrDeclaration.expectPart get() = if (this.isExpect) "#expect" else ""
+    // TODO: need to figure out the proper OptionalExpectation behavior
+    private val IrDeclaration.expectPart get() = if (this.isExpect /*&& !(this.descriptor.isSerializableExpectClass)*/) "#expect" else ""
 
     private val IrDeclarationParent.fqNameUnique: FqName
         get() = when (this) {

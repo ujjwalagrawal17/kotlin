@@ -88,6 +88,8 @@ abstract class DescriptorReferenceDeserializer(
         return ClassMembers(classConstructorDescriptor, allMembersMap, realMembersMap)
     }
 
+    // TODO: the real findExpects() returns a list.
+    // Need to account for multiple expects here.
     private fun MemberDescriptor.toExpect() =
         if (this.isExpect)
             this
@@ -112,18 +114,20 @@ abstract class DescriptorReferenceDeserializer(
         val protoIndex = index
 
         val (clazz, members) = if (classFqName.isRoot) {
-            Pair(null, getContributedDescriptors(packageFqName, name).let {
-                if (DescriptorReferenceFlags.IS_EXPECT.decode(flags)) it.toExpects() else it
-            }
+            Pair(null,
+                getContributedDescriptors(packageFqName, name).let {
+                    if (DescriptorReferenceFlags.IS_EXPECT.decode(flags)) it.toExpects() else it
+                }
             )
         } else {
-            val clazz = currentModule.findClassAcrossModuleDependencies(ClassId(packageFqName, classFqName, false))!!
+            val classifier = (currentModule.findClassifierAcrossModuleDependencies(ClassId(packageFqName, classFqName, false)) as? MemberDescriptor)
+                ?: error("Could not find class across modules: $packageFqName/$classFqName")
 
             val expect = if (DescriptorReferenceFlags.IS_EXPECT.decode(flags)) {
-                clazz.toExpect()
+                classifier.toExpect()
             } else null
 
-            val expectOrActualClass = (expect as ClassDescriptor?) ?: clazz
+            val expectOrActualClass = (expect as ClassDescriptor?) ?: (classifier as ClassDescriptor) // TODO: OMG!!!
             Pair(expectOrActualClass, getContributedDescriptors(expectOrActualClass.unsubstitutedMemberScope, name) + expectOrActualClass.getConstructors())
         }
 

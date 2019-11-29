@@ -8,6 +8,7 @@ package org.jetbrains.kotlin.backend.common.serialization
 import org.jetbrains.kotlin.backend.common.LoggingContext
 import org.jetbrains.kotlin.backend.common.ir.DeclarationFactory
 import org.jetbrains.kotlin.backend.common.ir.ir2string
+import org.jetbrains.kotlin.backend.common.ir.isProperExpect
 import org.jetbrains.kotlin.backend.common.peek
 import org.jetbrains.kotlin.backend.common.pop
 import org.jetbrains.kotlin.backend.common.push
@@ -128,7 +129,8 @@ import org.jetbrains.kotlin.backend.common.serialization.proto.Visibility as Pro
 abstract class IrFileDeserializer(
     val logger: LoggingContext,
     val builtIns: IrBuiltIns,
-    val symbolTable: SymbolTable
+    val symbolTable: SymbolTable,
+    val expectDescriptorToSymbol: MutableMap<DeclarationDescriptor, IrSymbol>
 ) {
 
     abstract fun deserializeIrSymbol(index: Int): IrSymbol
@@ -908,6 +910,9 @@ abstract class IrFileDeserializer(
         )
         result.annotations.addAll(deserializeAnnotations(proto.annotationList))
         result.parent = parentsStack.peek()!!
+        if (result.isProperExpect) {
+            expectDescriptorToSymbol.put(result.descriptor, result.symbol)
+        }
         return result
     }
 

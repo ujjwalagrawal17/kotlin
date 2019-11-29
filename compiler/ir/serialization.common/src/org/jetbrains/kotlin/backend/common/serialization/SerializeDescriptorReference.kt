@@ -6,6 +6,7 @@
 package org.jetbrains.kotlin.backend.common.serialization
 
 import org.jetbrains.kotlin.backend.common.ir.isExpect
+import org.jetbrains.kotlin.backend.common.ir.isProperExpect
 import org.jetbrains.kotlin.backend.common.serialization.proto.DescriptorReference as ProtoDescriptorReference
 
 import org.jetbrains.kotlin.descriptors.*
@@ -21,7 +22,8 @@ import org.jetbrains.kotlin.resolve.descriptorUtil.classId
 open class DescriptorReferenceSerializer(
     val declarationTable: DeclarationTable,
     val serializeString: (String) -> Int,
-    val serializeFqName: (FqName) -> List<Int>
+    val serializeFqName: (FqName) -> List<Int>,
+    val skipExpects: Boolean
 ) {
 
     private fun isEnumSpecialMember(descriptor: DeclarationDescriptor): Boolean {
@@ -124,7 +126,7 @@ open class DescriptorReferenceSerializer(
                 DescriptorReferenceFlags.IS_ENUM_ENTRY.encode(isEnumEntry) or
                 DescriptorReferenceFlags.IS_ENUM_SPECIAL.encode(isEnumSpecial) or
                 DescriptorReferenceFlags.IS_TYPE_PARAMETER.encode(isTypeParameter) or
-                DescriptorReferenceFlags.IS_EXPECT.encode(declaration.isExpect || (declaration.parent as? IrDeclaration)?.isExpect ?: false)
+                DescriptorReferenceFlags.IS_EXPECT.encode(!skipExpects && declaration.isProperExpect)
         proto.flags = flags
 
         if (uniqId != null) proto.uniqIdIndex = uniqId.index

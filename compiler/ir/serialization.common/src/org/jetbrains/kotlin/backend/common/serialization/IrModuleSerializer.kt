@@ -6,13 +6,22 @@
 package org.jetbrains.kotlin.backend.common.serialization
 
 import org.jetbrains.kotlin.backend.common.LoggingContext
+import org.jetbrains.kotlin.backend.common.ir.isProperExpect
 import org.jetbrains.kotlin.builtins.FunctionInterfacePackageFragment
+import org.jetbrains.kotlin.ir.IrElement
+import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
+import org.jetbrains.kotlin.ir.declarations.IrSymbolOwner
+import org.jetbrains.kotlin.ir.visitors.IrElementVisitorVoid
+import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
+import org.jetbrains.kotlin.ir.visitors.acceptVoid
 import org.jetbrains.kotlin.library.SerializedIrFile
 import org.jetbrains.kotlin.library.SerializedIrModule
 
+
 abstract class IrModuleSerializer<F : IrFileSerializer>(protected val logger: LoggingContext) {
+
     abstract fun createSerializerForFile(file: IrFile): F
 
     private fun serializeIrFile(file: IrFile): SerializedIrFile {
@@ -21,6 +30,28 @@ abstract class IrModuleSerializer<F : IrFileSerializer>(protected val logger: Lo
     }
 
     fun serializedIrModule(module: IrModuleFragment): SerializedIrModule {
-        return SerializedIrModule(module.files.filter { it.packageFragmentDescriptor !is FunctionInterfacePackageFragment }.map { serializeIrFile(it) })
+
+        // Since ExpectActualResolver is descriptor based we need to keep
+        // descriptor-to-symbol correspondence.
+        module.files.forEach { file ->
+            file.acceptVoid(object : IrElementVisitorVoid {
+                override fun visitElement(element: IrElement) {
+                    element.acceptChildrenVoid(this)
+                }
+                override fun visitDeclaration(declaration: IrDeclaration) {
+                    if (declaration.isProperExpect) {
+                        expectDescriptorToSymbol.put(declaration.descriptor, (declaration as IrSymbolOwner).symbol)
+                    }
+                    super.visitDeclaration(declaration)
+                }
+            })
+        }
+
+
+        return SerializedIrModule(
+            module.files.filter { it.packageFragmentDescriptor !is FunctionInterfacePackageFragment }.map {
+                serializeIrFile(it)
+            }
+        )
     }
 }

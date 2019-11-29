@@ -41,6 +41,12 @@ import org.jetbrains.kotlin.backend.common.serialization.proto.IrType as ProtoTy
 import org.jetbrains.kotlin.backend.common.serialization.proto.IrStatement as ProtoStatement
 import org.jetbrains.kotlin.backend.common.serialization.proto.IrExpression as ProtoExpression
 import org.jetbrains.kotlin.backend.common.serialization.proto.IrConstructorCall as ProtoConstructorCall
+import org.jetbrains.kotlin.backend.common.serialization.proto.ExpectActualTable as ProtoExpectActualTable
+import org.jetbrains.kotlin.backend.common.serialization.proto.Actual as ProtoActual
+
+
+// TODO: don't make it global
+val expectDescriptorToSymbol = mutableMapOf<DeclarationDescriptor, IrSymbol>()
 
 abstract class KotlinIrLinker(
     val logger: LoggingContext,
@@ -48,9 +54,12 @@ abstract class KotlinIrLinker(
     val symbolTable: SymbolTable,
     private val exportedDependencies: List<ModuleDescriptor>,
     private val forwardModuleDescriptor: ModuleDescriptor?,
-    mangler: KotlinMangler
+    mangler: KotlinMangler,
+    val expectDescriptorToSymbol: MutableMap<DeclarationDescriptor, IrSymbol>
 ) : DescriptorUniqIdAware, IrDeserializer {
 
+    val expectUniqIdToActualProto =
+        mutableMapOf<UniqId, Pair<KotlinIrLinker.IrModuleDeserializer.IrDeserializerForFile, ProtoSymbolData>>()
 
     sealed class DeserializationState<T> {
         val deserializedSymbols = mutableMapOf<UniqId, IrSymbol>()
@@ -139,9 +148,10 @@ abstract class KotlinIrLinker(
 
         inner class IrDeserializerForFile(
             private var annotations: List<ProtoConstructorCall>?,
+            val actuals: List<ProtoActual>,
             private val fileIndex: Int,
             onlyHeaders: Boolean
-        ) : IrFileDeserializer(logger, builtIns, symbolTable) {
+        ) : IrFileDeserializer(logger, builtIns, symbolTable, expectDescriptorToSymbol) {
 
             private var fileLoops = mutableMapOf<Int, IrLoopBase>()
 
@@ -159,6 +169,17 @@ abstract class KotlinIrLinker(
 
             fun deserializeDeclaration(key: UniqId): IrDeclaration {
                 return deserializeDeclaration(loadTopLevelDeclarationProto(key), file)
+            }
+
+            fun deserializeExpectActualMapping() {
+                actuals.forEach {
+                    val expect = UniqId(it.expect)
+                    val actual = UniqId(it.actual)
+                    assert(expectUniqIdToActualProto[expect] == null) {
+                        "Expect uniqid ${expect.index} is already actualized by ${expectUniqIdToActualProto[expect]?.second?.uniqIdIndex}, while we try to record ${actual.index}"
+                    }
+                    expectUniqIdToActualProto.put(expect, this to loadSymbolProto(it.actualSymbol))
+                }
             }
 
             private fun loadTopLevelDeclarationProto(uniqId: UniqId): ProtoDeclaration {
@@ -188,6 +209,10 @@ abstract class KotlinIrLinker(
 
             private fun loadStringProto(index: Int): String {
                 return String(readString(moduleDescriptor, fileIndex, index))
+            }
+
+            private fun loadExpectActuals() {
+                ProtoExpectActualTable.parseFrom(readExpectActualTable(moduleDescriptor))
             }
 
             private fun referenceDeserializedSymbol(
@@ -296,7 +321,11 @@ abstract class KotlinIrLinker(
                 return getModuleForTopLevelId(key)?.moduleDeserializationState ?: handleNoModuleDeserializerFound(key)
             }
 
-            private fun deserializeIrSymbolData(proto: ProtoSymbolData): IrSymbol {
+            private fun deserializeIrSymbolData(maybeExpectProto: ProtoSymbolData): IrSymbol {
+
+                val delegateToActual = expectUniqIdToActualProto[UniqId(maybeExpectProto.uniqIdIndex)]
+                val proto = delegateToActual?.second ?: maybeExpectProto
+
                 val key = UniqId(proto.uniqIdIndex)
                 val topLevelKey = UniqId(proto.topLevelUniqIdIndex)
 
@@ -313,7 +342,7 @@ abstract class KotlinIrLinker(
 
                 val symbol = deserializationState.deserializedSymbols.getOrPut(key) {
                     val descriptor = if (proto.hasDescriptorReference()) {
-                        deserializeDescriptorReference(proto.descriptorReference)
+                        (delegateToActual?.first ?: this).deserializeDescriptorReference(proto.descriptorReference)
                     } else {
                         null
                     }
@@ -389,6 +418,9 @@ abstract class KotlinIrLinker(
 
             fun deserializeAllFileReachableTopLevel() {
                 fileLocalDeserializationState.processPendingDeclarations {
+                    assert(expectUniqIdToActualProto[it] == null) {
+                        "Somehow we try to deserialize expect declaration for $it in the presence of ${expectUniqIdToActualProto[it]!!.second.uniqIdIndex}"
+                    }
                     val declaration = deserializeDeclaration(it)
                     file.declarations.add(declaration)
                 }
@@ -402,7 +434,8 @@ abstract class KotlinIrLinker(
             val fileEntry = NaiveSourceBasedFileEntryImpl(fileName, fileProto.fileEntry.lineStartOffsetsList.toIntArray())
 
             val fileDeserializer =
-                IrDeserializerForFile(fileProto.annotationList, fileIndex, !deserializationStrategy.needBodies).apply {
+                IrDeserializerForFile(fileProto.annotationList, fileProto.actualsList, fileIndex, !deserializationStrategy.needBodies).apply {
+
                     // Explicitly exported declarations (e.g. top-level initializers) must be deserialized before all other declarations.
                     // Thus we schedule their deserialization in deserializer's constructor.
                     fileProto.explicitlyExportedToCompilerList.forEach {
@@ -555,8 +588,11 @@ abstract class KotlinIrLinker(
             findDeserializedDeclarationForDescriptor(symbol.descriptor) ?: return null
         }
 
+        // TODO: we do have serializations for those, but let's just create a stub for now.
+        if (!symbol.isBound && (symbol.descriptor.isExpectMember || symbol.descriptor.containingDeclaration?.isExpectMember ?: false)) return null
+
         assert(symbol.isBound) {
-            "findDeserializedDeclaration: symbol ${symbol} is unbound, descriptor = ${symbol.descriptor}, hash = ${symbol.descriptor.hashCode()}"
+            "getDeclaration: symbol ${symbol} is unbound, descriptor = ${symbol.descriptor}, hash = ${symbol.descriptor.hashCode()}"
         }
 
         return symbol.owner as IrDeclaration
@@ -594,6 +630,14 @@ abstract class KotlinIrLinker(
 
             }
             file.declarations.addAll(declarations)
+        }
+    }
+
+    fun initializeExpectActualLinker() {
+        deserializersForModules.values.forEach {
+            it.fileToDeserializerMap.values.forEach {
+                it.deserializeExpectActualMapping()
+            }
         }
     }
 
