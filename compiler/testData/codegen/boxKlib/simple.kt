@@ -1,4 +1,5 @@
+import fromKlib.foo
+
 fun box(): String {
-    if (foo() != 17) return "fail"
-    return "OK"
+    return foo()
 }
