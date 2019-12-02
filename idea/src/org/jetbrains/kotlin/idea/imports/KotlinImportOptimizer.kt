@@ -201,7 +201,9 @@ class KotlinImportOptimizer : ImportOptimizer {
 
             if (isInScope(noImportsScope)) return true
             if (target !is ClassDescriptor) { // classes not accessible through receivers, only their constructors
-                if (resolutionScope.getImplicitReceiversHierarchy().any { isInScope(it.type.memberScope.memberScopeAsImportingScope()) }) return true
+                if (resolutionScope.getImplicitReceiversHierarchy()
+                        .any { isInScope(it.type.memberScope.memberScopeAsImportingScope()) }
+                ) return true
             }
             return false
         }
