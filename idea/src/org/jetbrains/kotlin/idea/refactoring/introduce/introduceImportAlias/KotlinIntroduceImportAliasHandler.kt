@@ -20,6 +20,7 @@ import org.jetbrains.kotlin.idea.core.moveCaret
 import org.jetbrains.kotlin.idea.core.util.CodeInsightUtils
 import org.jetbrains.kotlin.idea.imports.importableFqName
 import org.jetbrains.kotlin.idea.refactoring.selectElement
+import org.jetbrains.kotlin.idea.references.KtReference
 import org.jetbrains.kotlin.idea.references.findPsiDeclarations
 import org.jetbrains.kotlin.idea.references.mainReference
 import org.jetbrains.kotlin.idea.references.resolveMainReferenceToDescriptors
@@ -123,10 +124,9 @@ private fun invokeRename(
 }
 
 private fun replaceUsages(usages: List<UsageContext>, newName: String) {
-    usages.filter { it.pointer.element?.safeAs<KtElement>()?.mainReference?.isImportUsage() == false }
-        .reversed() // case: inner element
+    usages.asReversed() // case: inner element
         .forEach {
-            val reference = it.pointer.element?.safeAs<KtElement>()?.mainReference ?: return@forEach
+            val reference = it.pointer.element?.safeAs<KtElement>()?.mainReference?.takeUnless(KtReference::isImportUsage) ?: return@forEach
             val newExpression = reference.handleElementRename(newName) as KtNameReferenceExpression
             if (it.isExtension) {
                 newExpression.getQualifiedElementSelector()?.replace(newExpression)
