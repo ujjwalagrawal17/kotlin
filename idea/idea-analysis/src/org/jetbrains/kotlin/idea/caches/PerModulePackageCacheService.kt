@@ -223,7 +223,7 @@ class ImplicitPackagePrefixCache(private val project: Project) {
     }
 
     internal fun update(ktFile: KtFile) {
-        val parent = ktFile.virtualFile.parent
+        val parent = ktFile.virtualFile?.parent ?: return
         if (ktFile.sourceRoot == parent) {
             implicitPackageCache[parent]?.updateFile(ktFile)
         }
