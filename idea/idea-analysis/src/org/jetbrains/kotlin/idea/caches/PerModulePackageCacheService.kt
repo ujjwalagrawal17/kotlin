@@ -47,7 +47,7 @@ import org.jetbrains.kotlin.psi.psiUtil.getParentOfType
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentMap
 
-class KotlinPackageContentModificationListener(private val project: Project): Disposable {
+class KotlinPackageContentModificationListener(private val project: Project) : Disposable {
     val connection = project.messageBus.connect()
 
     init {
@@ -69,7 +69,8 @@ class KotlinPackageContentModificationListener(private val project: Project): Di
                         .filter { (it.isValid || it !is VFileCreateEvent) && it.file != null }
                         .filter {
                             val vFile = it.file!!
-                            vFile.isDirectory || FileTypeRegistry.getInstance().getFileTypeByFileName(vFile.nameSequence) == KotlinFileType.INSTANCE
+                            vFile.isDirectory || FileTypeRegistry.getInstance().getFileTypeByFileName(vFile.nameSequence) == KotlinFileType
+                                .INSTANCE
                         }
                         .filter {
                             when (val origin = it.requestor) {
@@ -303,7 +304,9 @@ class PerModulePackageCacheService(private val project: Project) : Disposable {
 
             pendingKtFileChanges.processPending { file ->
                 if (file.virtualFile != null && file.virtualFile !in projectScope) {
-                    LOG.debugIfEnabled(project) { "Skip $file without vFile, or not in scope: ${file.virtualFile?.let { it !in projectScope }}" }
+                    LOG.debugIfEnabled(project) {
+                        "Skip $file without vFile, or not in scope: ${file.virtualFile?.let { it !in projectScope }}"
+                    }
                     return@processPending
                 }
                 val nullableModuleInfo = file.getNullableModuleInfo()
