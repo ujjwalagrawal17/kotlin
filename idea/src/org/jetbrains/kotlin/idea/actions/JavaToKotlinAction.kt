@@ -172,7 +172,8 @@ class JavaToKotlinAction : AnAction() {
 
             var externalCodeUpdate: ((List<KtFile>) -> Unit)? = null
 
-            if (enableExternalCodeProcessing && converterResult!!.externalCodeProcessing != null) {
+            val result = converterResult ?: return emptyList()
+            if (enableExternalCodeProcessing && result.externalCodeProcessing != null) {
                 val question =
                     "Some code in the rest of your project may require corrections after performing this conversion. Do you want to find such code and correct it too?"
                 if (!askExternalCodeProcessing || (Messages.showYesNoDialog(
@@ -185,7 +186,7 @@ class JavaToKotlinAction : AnAction() {
                     ProgressManager.getInstance().runProcessWithProgressSynchronously(
                         {
                             runReadAction {
-                                externalCodeUpdate = converterResult!!.externalCodeProcessing!!.prepareWriteOperation(
+                                externalCodeUpdate = result.externalCodeProcessing!!.prepareWriteOperation(
                                     ProgressManager.getInstance().progressIndicator!!
                                 )
                             }
@@ -200,7 +201,7 @@ class JavaToKotlinAction : AnAction() {
             return project.executeWriteCommand("Convert files from Java to Kotlin", null) {
                 CommandProcessor.getInstance().markCurrentCommandAsGlobal(project)
 
-                val newFiles = saveResults(javaFiles, converterResult!!.results)
+                val newFiles = saveResults(javaFiles, result.results)
                     .map { it.toPsiFile(project) as KtFile }
                     .onEach { it.commitAndUnblockDocument() }
 
