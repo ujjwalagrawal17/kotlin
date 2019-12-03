@@ -82,7 +82,11 @@ abstract class AbstractKtReference<T : KtElement>(element: T) : PsiPolyVariantRe
                 return resolveToPsiElements(ref, bindingContext, ref.getTargetDescriptors(bindingContext))
             }
 
-            private fun resolveToPsiElements(ref: AbstractKtReference<KtElement>, context: BindingContext, targetDescriptors: Collection<DeclarationDescriptor>): Collection<PsiElement> {
+            private fun resolveToPsiElements(
+                ref: AbstractKtReference<KtElement>,
+                context: BindingContext,
+                targetDescriptors: Collection<DeclarationDescriptor>
+            ): Collection<PsiElement> {
                 if (targetDescriptors.isNotEmpty()) {
                     return targetDescriptors.flatMap { target -> resolveToPsiElements(ref, target) }.toSet()
                 }
@@ -95,13 +99,15 @@ abstract class AbstractKtReference<T : KtElement>(element: T) : PsiPolyVariantRe
                 return Collections.emptySet()
             }
 
-            private fun resolveToPsiElements(ref: AbstractKtReference<KtElement>, targetDescriptor: DeclarationDescriptor): Collection<PsiElement> {
+            private fun resolveToPsiElements(
+                ref: AbstractKtReference<KtElement>,
+                targetDescriptor: DeclarationDescriptor
+            ): Collection<PsiElement> {
                 return if (targetDescriptor is PackageViewDescriptor) {
                     val psiFacade = JavaPsiFacade.getInstance(ref.expression.project)
                     val fqName = targetDescriptor.fqName.asString()
                     listOfNotNull(psiFacade.findPackage(fqName))
-                }
-                else {
+                } else {
                     DescriptorToSourceUtilsIde.getAllDeclarations(ref.expression.project, targetDescriptor, ref.expression.resolveScope)
                 }
             }
