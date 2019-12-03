@@ -45,24 +45,24 @@ import java.util.*
 import javax.swing.JCheckBox
 
 class KotlinVariableInplaceIntroducer(
-        val addedVariable: KtProperty,
-        originalExpression: KtExpression?,
-        occurrencesToReplace: Array<KtExpression>,
-        suggestedNames: Collection<String>,
-        val isVar: Boolean,
-        val doNotChangeVar: Boolean,
-        val expressionType: KotlinType?,
-        val noTypeInference: Boolean,
-        project: Project,
-        editor: Editor,
-        private val postProcess: (KtDeclaration) -> Unit
-): AbstractKotlinInplaceIntroducer<KtProperty>(
-        addedVariable,
-        originalExpression,
-        occurrencesToReplace,
-        KotlinIntroduceVariableHandler.INTRODUCE_VARIABLE,
-        project,
-        editor
+    val addedVariable: KtProperty,
+    originalExpression: KtExpression?,
+    occurrencesToReplace: Array<KtExpression>,
+    suggestedNames: Collection<String>,
+    val isVar: Boolean,
+    val doNotChangeVar: Boolean,
+    val expressionType: KotlinType?,
+    val noTypeInference: Boolean,
+    project: Project,
+    editor: Editor,
+    private val postProcess: (KtDeclaration) -> Unit
+) : AbstractKotlinInplaceIntroducer<KtProperty>(
+    addedVariable,
+    originalExpression,
+    occurrencesToReplace,
+    KotlinIntroduceVariableHandler.INTRODUCE_VARIABLE,
+    project,
+    editor
 ) {
     private val suggestedNames = suggestedNames.toTypedArray()
     private var expressionTypeCheckBox: JCheckBox? = null
@@ -95,8 +95,7 @@ class KotlinVariableInplaceIntroducer(
                             updateVariableName()
                             if (isSelected) {
                                 addedVariable.typeReference = KtPsiFactory(myProject).createType(renderedType)
-                            }
-                            else {
+                            } else {
                                 addedVariable.typeReference = null
                             }
                         }
@@ -121,10 +120,12 @@ class KotlinVariableInplaceIntroducer(
         }
     }
 
-    override fun buildTemplateAndStart(refs: Collection<PsiReference>,
-                                       stringUsages: Collection<Pair<PsiElement, TextRange>>,
-                                       scope: PsiElement,
-                                       containingFile: PsiFile): Boolean {
+    override fun buildTemplateAndStart(
+        refs: Collection<PsiReference>,
+        stringUsages: Collection<Pair<PsiElement, TextRange>>,
+        scope: PsiElement,
+        containingFile: PsiFile
+    ): Boolean {
         myNameSuggestions = myNameSuggestions.mapTo(LinkedHashSet(), String::quoteIfNeeded)
 
         myEditor.caretModel.moveToOffset(nameIdentifier!!.startOffset)
