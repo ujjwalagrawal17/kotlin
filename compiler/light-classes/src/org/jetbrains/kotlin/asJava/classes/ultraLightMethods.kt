@@ -31,7 +31,8 @@ internal abstract class KtUltraLightMethod(
     internal val delegate: PsiMethod,
     lightMemberOrigin: LightMemberOrigin?,
     protected val support: KtUltraLightSupport,
-    containingClass: KtLightClass
+    containingClass: KtLightClass,
+    private val overloadIndex: Int = 0
 ) : KtLightMethodImpl(
     { delegate },
     lightMemberOrigin,
@@ -104,7 +105,15 @@ internal abstract class KtUltraLightMethod(
     override fun findSuperMethods(parentClass: PsiClass?): Array<out PsiMethod> =
         PsiSuperMethodImplUtil.findSuperMethods(this, parentClass)
 
-    override fun equals(other: Any?): Boolean = this === other
+    override fun equals(other: Any?): Boolean {
+        if (other === null) return false
+        if (this === other) return true
+        if (other !is KtUltraLightMethod) return false
+        if (this.javaClass != other.javaClass) return false
+        if (containingClass != other.containingClass) return false
+        if (kotlinOrigin === null || other.kotlinOrigin === null) return false
+        return overloadIndex == other.overloadIndex && kotlinOrigin == other.kotlinOrigin
+    }
 
     override fun hashCode(): Int = name.hashCode()
 
@@ -116,19 +125,29 @@ internal class KtUltraLightMethodForSourceDeclaration(
     lightMemberOrigin: LightMemberOrigin?,
     support: KtUltraLightSupport,
     containingClass: KtLightClass,
-    private val forceToSkipNullabilityAnnotation: Boolean = false
+    private val forceToSkipNullabilityAnnotation: Boolean = false,
+    overloadIndex: Int = 0
 ) : KtUltraLightMethod(
     delegate,
     lightMemberOrigin,
     support,
-    containingClass
+    containingClass,
+    overloadIndex
 ) {
     constructor(
         delegate: PsiMethod,
         declaration: KtDeclaration,
         support: KtUltraLightSupport,
-        containingClass: KtLightClass
-    ) : this(delegate, LightMemberOriginForDeclaration(declaration, JvmDeclarationOriginKind.OTHER), support, containingClass)
+        containingClass: KtLightClass,
+        overloadIndex: Int = 0
+    ) : this(
+        delegate,
+        LightMemberOriginForDeclaration(declaration, JvmDeclarationOriginKind.OTHER),
+        support,
+        containingClass,
+        forceToSkipNullabilityAnnotation = false,
+        overloadIndex
+    )
 
     override val qualifiedNameForNullabilityAnnotation: String?
         get() {

@@ -129,15 +129,18 @@ internal class UltraLightMembersCreator(
 
         if (ktFunction.hasAnnotation(JVM_OVERLOADS_FQ_NAME)) {
             val numberOfDefaultParameters = ktFunction.valueParameters.count(KtParameter::hasDefaultValue)
+            var overloadIndex = 1
             for (numberOfDefaultParametersToAdd in numberOfDefaultParameters - 1 downTo 0) {
                 result.add(
                     asJavaMethod(
                         ktFunction,
                         forceStatic,
                         forcePrivate,
-                        numberOfDefaultParametersToAdd = numberOfDefaultParametersToAdd
+                        numberOfDefaultParametersToAdd = numberOfDefaultParametersToAdd,
+                        overloadIndex = overloadIndex
                     )
                 )
+                overloadIndex++
             }
         }
 
@@ -145,7 +148,7 @@ internal class UltraLightMembersCreator(
     }
 
     internal class KtUltraLightAnnotationMethod(
-        psiMethod: KtLightMethod,
+        private val psiMethod: KtLightMethod,
         expression: KtExpression
     ) : KtLightMethod by psiMethod,
         PsiAnnotationMethod {
@@ -154,6 +157,12 @@ internal class UltraLightMembersCreator(
             convertToLightAnnotationMemberValue(psiMethod, expression)
         }
 
+        override fun equals(other: Any?): Boolean = psiMethod == (other as? KtUltraLightAnnotationMethod)?.psiMethod
+
+        override fun hashCode(): Int = psiMethod.hashCode()
+
+        override fun toString(): String = psiMethod.toString()
+
         override fun getDefaultValue(): PsiAnnotationMemberValue? = value
     }
 
@@ -161,7 +170,8 @@ internal class UltraLightMembersCreator(
         ktFunction: KtFunction,
         forceStatic: Boolean,
         forcePrivate: Boolean,
-        numberOfDefaultParametersToAdd: Int = -1
+        numberOfDefaultParametersToAdd: Int = -1,
+        overloadIndex: Int = 0
     ): KtLightMethod {
         val isConstructor = ktFunction is KtConstructor<*>
         val name =
@@ -169,7 +179,7 @@ internal class UltraLightMembersCreator(
             else computeMethodName(ktFunction, ktFunction.name ?: SpecialNames.NO_NAME_PROVIDED.asString(), MethodType.REGULAR)
 
         val method = lightMethod(name.orEmpty(), ktFunction, forceStatic, forcePrivate)
-        val wrapper = KtUltraLightMethodForSourceDeclaration(method, ktFunction, support, containingClass)
+        val wrapper = KtUltraLightMethodForSourceDeclaration(method, ktFunction, support, containingClass, overloadIndex)
         addReceiverParameter(ktFunction, wrapper, method)
 
         var remainingNumberOfDefaultParametersToAdd =
@@ -266,7 +276,9 @@ internal class UltraLightMembersCreator(
                 if (forcePrivate || declaration.isPrivate() || accessedProperty?.isPrivate() == true) {
                     return name == PsiModifier.PRIVATE
                 }
-                if (declaration.hasModifier(KtTokens.PROTECTED_KEYWORD) || accessedProperty?.hasModifier(KtTokens.PROTECTED_KEYWORD) == true) {
+                if (declaration.hasModifier(KtTokens.PROTECTED_KEYWORD) || accessedProperty
+                        ?.hasModifier(KtTokens.PROTECTED_KEYWORD) == true
+                ) {
                     return name == PsiModifier.PROTECTED
                 }
 
@@ -284,7 +296,8 @@ internal class UltraLightMembersCreator(
             return when (name) {
                 PsiModifier.FINAL -> !containingClass.isInterface && outerDeclaration !is KtConstructor<*> && isFinal(outerDeclaration)
                 PsiModifier.ABSTRACT -> containingClass.isInterface || outerDeclaration.hasModifier(KtTokens.ABSTRACT_KEYWORD)
-                PsiModifier.STATIC -> forceStatic || containingClassIsNamedObject && (outerDeclaration.isJvmStatic(support) || declaration.isJvmStatic(support))
+                PsiModifier.STATIC -> forceStatic || containingClassIsNamedObject && (outerDeclaration.isJvmStatic(support) || declaration
+                    .isJvmStatic(support))
                 PsiModifier.STRICTFP -> declaration is KtFunction && declaration.hasAnnotation(STRICTFP_ANNOTATION_FQ_NAME)
                 PsiModifier.SYNCHRONIZED -> declaration is KtFunction && declaration.hasAnnotation(SYNCHRONIZED_ANNOTATION_FQ_NAME)
                 PsiModifier.NATIVE -> declaration is KtFunction && declaration.hasModifier(EXTERNAL_KEYWORD)
@@ -408,7 +421,9 @@ internal class UltraLightMembersCreator(
                 if (declaration is KtProperty && declaration.hasDelegate()) {
                     return true
                 }
-                if (accessor?.hasModifier(KtTokens.PRIVATE_KEYWORD) == true || accessor?.hasAnnotation(JVM_SYNTHETIC_ANNOTATION_FQ_NAME) == true) {
+                if (accessor?.hasModifier(KtTokens.PRIVATE_KEYWORD) == true || accessor
+                        ?.hasAnnotation(JVM_SYNTHETIC_ANNOTATION_FQ_NAME) == true
+                ) {
                     return false
                 }
                 if (!isPrivate || accessor?.hasBody() == true) {
@@ -436,7 +451,8 @@ internal class UltraLightMembersCreator(
                 lightMemberOrigin,
                 support,
                 containingClass,
-                forceToSkipNullabilityAnnotation = createAsAnnotationMethod
+                forceToSkipNullabilityAnnotation = createAsAnnotationMethod,
+                overloadIndex = 0 //To be sure that that setter and getter are separated by equals
             )
 
             val getterType: PsiType by lazyPub { methodReturnType(declaration, getterWrapper, isSuspendFunction = false) }
@@ -463,7 +479,13 @@ internal class UltraLightMembersCreator(
             val setterPrototype = lightMethod(setterName, auxiliaryOrigin, forceStatic = onlyJvmStatic || forceStatic)
                 .setMethodReturnType(PsiType.VOID)
 
-            val setterWrapper = KtUltraLightMethodForSourceDeclaration(setterPrototype, lightMemberOrigin, support, containingClass)
+            val setterWrapper = KtUltraLightMethodForSourceDeclaration(
+                setterPrototype,
+                lightMemberOrigin,
+                support,
+                containingClass,
+                overloadIndex = 1 //To be sure that that setter and getter are separated by equals
+            )
             addReceiverParameter(declaration, setterWrapper, setterPrototype)
             val setterParameter = ktSetter?.parameter
             setterPrototype.addParameter(

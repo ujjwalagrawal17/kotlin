@@ -403,7 +403,7 @@ open class KtUltraLightClass(classOrObject: KtClassOrObject, internal val suppor
         }
         val primary = classOrObject.primaryConstructor
         if (primary != null && shouldGenerateNoArgOverload(primary)) {
-            result.add(noArgConstructor(primary.simpleVisibility(), primary))
+            result.add(noArgConstructor(primary.simpleVisibility(), primary, overloadIndex = 1))
         }
         return result
     }
@@ -428,12 +428,13 @@ open class KtUltraLightClass(classOrObject: KtClassOrObject, internal val suppor
         return noArgConstructor(visibility, classOrObject)
     }
 
-    private fun noArgConstructor(visibility: String, declaration: KtDeclaration): KtUltraLightMethod =
+    private fun noArgConstructor(visibility: String, declaration: KtDeclaration, overloadIndex: Int = 0): KtUltraLightMethod =
         KtUltraLightMethodForSourceDeclaration(
             LightMethodBuilder(manager, language, name.orEmpty()).setConstructor(true).addModifier(visibility),
             declaration,
             support,
-            this
+            this,
+            overloadIndex
         )
 
     private fun isHiddenByDeprecation(declaration: KtDeclaration): Boolean {
