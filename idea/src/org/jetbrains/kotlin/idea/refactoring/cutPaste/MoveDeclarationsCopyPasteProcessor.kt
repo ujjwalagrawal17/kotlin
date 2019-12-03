@@ -51,10 +51,10 @@ class MoveDeclarationsCopyPasteProcessor : CopyPastePostProcessor<MoveDeclaratio
     }
 
     override fun collectTransferableData(
-            file: PsiFile,
-            editor: Editor,
-            startOffsets: IntArray,
-            endOffsets: IntArray
+        file: PsiFile,
+        editor: Editor,
+        startOffsets: IntArray,
+        endOffsets: IntArray
     ): List<MoveDeclarationsTransferableData> {
         if (DumbService.isDumb(file.project)) return emptyList()
 
@@ -90,34 +90,33 @@ class MoveDeclarationsCopyPasteProcessor : CopyPastePostProcessor<MoveDeclaratio
             if (content.isDataFlavorSupported(MoveDeclarationsTransferableData.DATA_FLAVOR)) {
                 return listOf(content.getTransferData(MoveDeclarationsTransferableData.DATA_FLAVOR) as MoveDeclarationsTransferableData)
             }
-        }
-        catch (e: Throwable) {
+        } catch (e: Throwable) {
             LOG.error(e)
         }
         return emptyList()
     }
 
     override fun processTransferableData(
-            project: Project,
-            editor: Editor,
-            bounds: RangeMarker,
-            caretOffset: Int,
-            indented: Ref<Boolean>,
-            values: List<MoveDeclarationsTransferableData>
+        project: Project,
+        editor: Editor,
+        bounds: RangeMarker,
+        caretOffset: Int,
+        indented: Ref<Boolean>,
+        values: List<MoveDeclarationsTransferableData>
     ) {
         val data = values.single()
 
         fun putCookie() {
             if (bounds.isValid) {
-                val cookie = MoveDeclarationsEditorCookie(data, bounds, PsiModificationTracker.SERVICE.getInstance(project).modificationCount)
+                val cookie =
+                    MoveDeclarationsEditorCookie(data, bounds, PsiModificationTracker.SERVICE.getInstance(project).modificationCount)
                 editor.putUserData(MoveDeclarationsEditorCookie.KEY, cookie)
             }
         }
 
         if (ApplicationManager.getApplication().isUnitTestMode) {
             putCookie()
-        }
-        else {
+        } else {
             // in real application we put cookie later to allow all other paste handlers do their work (because modificationCount will change)
             ApplicationManager.getApplication().invokeLater(::putCookie)
         }
