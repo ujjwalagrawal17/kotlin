@@ -28,6 +28,7 @@ import org.jetbrains.kotlin.idea.scratch.ScratchFile
 import org.jetbrains.kotlin.idea.scratch.printDebugMessage
 import org.jetbrains.kotlin.idea.util.JavaParametersBuilder
 import org.jetbrains.kotlin.idea.util.application.runReadAction
+import org.jetbrains.kotlin.idea.util.runReadActionInSmartMode
 import org.jetbrains.kotlin.psi.*
 import java.io.File
 
@@ -47,7 +48,7 @@ class KtScratchExecutionSession(
         val expressions = file.getExpressions()
         if (!executor.checkForErrors(psiFile, expressions)) return
 
-        when (val result = runReadAction { KtScratchSourceFileProcessor().process(expressions) }) {
+        when (val result = file.project.runReadActionInSmartMode { KtScratchSourceFileProcessor().process(expressions) }) {
             is KtScratchSourceFileProcessor.Result.Error -> return executor.errorOccurs(result.message, isFatal = true)
             is KtScratchSourceFileProcessor.Result.OK -> {
                 LOG.printDebugMessage("After processing by KtScratchSourceFileProcessor:\n ${result.code}")
