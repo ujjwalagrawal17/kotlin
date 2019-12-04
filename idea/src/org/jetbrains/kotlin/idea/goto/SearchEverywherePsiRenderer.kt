@@ -32,6 +32,7 @@ import com.intellij.ui.SimpleTextAttributes
 import com.intellij.util.ui.FilePathSplittingPolicy
 import org.jetbrains.kotlin.idea.caches.resolve.resolveToDescriptorIfAny
 import org.jetbrains.kotlin.idea.util.IdeDescriptorRenderers
+import org.jetbrains.kotlin.idea.util.runReadActionInSmartMode
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.renderer.ParameterNameRenderingPolicy
 import java.awt.BorderLayout
@@ -72,7 +73,7 @@ internal class KotlinSearchEverywherePsiRenderer(private val myList: JList<*>) :
 
     override fun getElementText(element: PsiElement?): String {
         if (element !is KtNamedFunction) return super.getElementText(element)
-        val descriptor = element.resolveToDescriptorIfAny() ?: return ""
+        val descriptor = element.project.runReadActionInSmartMode { element.resolveToDescriptorIfAny() } ?: return ""
         return buildString {
             descriptor.extensionReceiverParameter?.let { append(RENDERER.renderType(it.type)).append('.') }
             append(element.name)
