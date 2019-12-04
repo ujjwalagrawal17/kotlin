@@ -88,15 +88,12 @@ private class AddContinuationLowering(private val context: JvmBackendContext) : 
                     }
                 }.also { it.transformChildrenVoid(this) }
             }
-
-            private val currentDeclarationParent
-                get() = allScopes.last { it.irElement is IrDeclarationParent }.irElement as IrDeclarationParent
         })
     }
 
     private fun generateContinuationClassForLambda(info: SuspendLambdaInfo, parent: IrDeclarationParent): IrClass {
         val suspendLambda = context.ir.symbols.suspendLambdaClass.owner
-        return suspendLambda.createContinuationClassFor(JvmLoweredDeclarationOrigin.SUSPEND_LAMBDA, parent).apply {
+        return suspendLambda.createContinuationClassFor(parent, JvmLoweredDeclarationOrigin.SUSPEND_LAMBDA).apply {
             copyAttributes(info.reference)
             val functionNClass = context.ir.symbols.getJvmFunctionClass(info.arity + 1)
             superTypes.add(
@@ -305,7 +302,7 @@ private class AddContinuationLowering(private val context: JvmBackendContext) : 
         }
     }
 
-    private fun IrClass.createContinuationClassFor(newOrigin: IrDeclarationOrigin, parent: IrDeclarationParent): IrClass = buildClass {
+    private fun IrClass.createContinuationClassFor(parent: IrDeclarationParent, newOrigin: IrDeclarationOrigin): IrClass = buildClass {
         name = Name.special("<Continuation>")
         origin = newOrigin
         visibility = JavaVisibilities.PACKAGE_VISIBILITY
@@ -358,7 +355,7 @@ private class AddContinuationLowering(private val context: JvmBackendContext) : 
         attributeContainer: IrAttributeContainer
     ): IrClass {
         return context.ir.symbols.continuationImplClass.owner
-            .createContinuationClassFor(JvmLoweredDeclarationOrigin.CONTINUATION_CLASS, irFunction)
+            .createContinuationClassFor(irFunction, JvmLoweredDeclarationOrigin.CONTINUATION_CLASS)
             .apply {
                 val resultField = addField(
                     context.state.languageVersionSettings.dataFieldName(),
