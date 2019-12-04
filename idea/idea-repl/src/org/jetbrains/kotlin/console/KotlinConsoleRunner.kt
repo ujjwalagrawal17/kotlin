@@ -61,10 +61,10 @@ import org.jetbrains.kotlin.idea.caches.project.forcedModuleInfo
 import org.jetbrains.kotlin.idea.caches.project.productionSourceInfo
 import org.jetbrains.kotlin.idea.caches.project.testSourceInfo
 import org.jetbrains.kotlin.idea.caches.resolve.unsafeResolveToDescriptor
+import org.jetbrains.kotlin.idea.caches.trackers.KOTLIN_CONSOLE_KEY
 import org.jetbrains.kotlin.idea.core.script.ScriptDefinitionContributor
 import org.jetbrains.kotlin.idea.core.script.ScriptDefinitionSourceAsContributor
 import org.jetbrains.kotlin.idea.core.script.ScriptDefinitionsManager
-import org.jetbrains.kotlin.idea.caches.trackers.KOTLIN_CONSOLE_KEY
 import org.jetbrains.kotlin.idea.util.application.runReadAction
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.parsing.KotlinParserDefinition
@@ -84,12 +84,12 @@ import kotlin.script.experimental.jvm.defaultJvmScriptingHostConfiguration
 private val KOTLIN_SHELL_EXECUTE_ACTION_ID = "KotlinShellExecute"
 
 class KotlinConsoleRunner(
-        val module: Module,
-        private val cmdLine: GeneralCommandLine,
-        internal val previousCompilationFailed: Boolean,
-        myProject: Project,
-        title: String,
-        path: String?
+    val module: Module,
+    private val cmdLine: GeneralCommandLine,
+    internal val previousCompilationFailed: Boolean,
+    myProject: Project,
+    title: String,
+    path: String?
 ) : AbstractConsoleRunnerWithHistory<LanguageConsoleView>(myProject, title, path) {
 
     private val replState = ReplState()
@@ -181,9 +181,9 @@ class KotlinConsoleRunner(
 
     override fun createProcessHandler(process: Process): OSProcessHandler {
         val processHandler = ReplOutputHandler(
-                this,
-                process,
-                cmdLine.commandLineString
+            this,
+            process,
+            cmdLine.commandLineString
         )
         val consoleFile = consoleView.virtualFile
         val keeper = KotlinConsoleKeeper.getInstance(project)
@@ -197,24 +197,25 @@ class KotlinConsoleRunner(
         override fun runExecuteAction(consoleView: LanguageConsoleView) = executor.executeCommand()
     }
 
-    override fun fillToolBarActions(toolbarActions: DefaultActionGroup,
-                                    defaultExecutor: Executor,
-                                    contentDescriptor: RunContentDescriptor
+    override fun fillToolBarActions(
+        toolbarActions: DefaultActionGroup,
+        defaultExecutor: Executor,
+        contentDescriptor: RunContentDescriptor
     ): List<AnAction> {
         disposableDescriptor = contentDescriptor
         compilerHelper = ConsoleCompilerHelper(project, module, defaultExecutor, contentDescriptor)
 
         val actionList = arrayListOf<AnAction>(
-                BuildAndRestartConsoleAction(this),
-                createConsoleExecAction(consoleExecuteActionHandler),
-                createCloseAction(defaultExecutor, contentDescriptor)
+            BuildAndRestartConsoleAction(this),
+            createConsoleExecAction(consoleExecuteActionHandler),
+            createCloseAction(defaultExecutor, contentDescriptor)
         )
         toolbarActions.addAll(actionList)
         return actionList
     }
 
-    override fun createConsoleExecAction(consoleExecuteActionHandler: ProcessBackedConsoleExecuteActionHandler)
-            = ConsoleExecuteAction(consoleView, consoleExecuteActionHandler, KOTLIN_SHELL_EXECUTE_ACTION_ID, consoleExecuteActionHandler)
+    override fun createConsoleExecAction(consoleExecuteActionHandler: ProcessBackedConsoleExecuteActionHandler) =
+        ConsoleExecuteAction(consoleView, consoleExecuteActionHandler, KOTLIN_SHELL_EXECUTE_ACTION_ID, consoleExecuteActionHandler)
 
     override fun constructConsoleTitle(title: String) = "$title (in module ${module.name})"
 
@@ -260,13 +261,14 @@ class KotlinConsoleRunner(
         val indicator = ConsoleIndicatorRenderer(iconWithTooltip)
         val editorMarkup = editor.markupModel
         val indicatorHighlighter = editorMarkup.addRangeHighlighter(
-                0, editor.document.textLength, HighlighterLayer.LAST, null, HighlighterTargetArea.LINES_IN_RANGE
+            0, editor.document.textLength, HighlighterLayer.LAST, null, HighlighterTargetArea.LINES_IN_RANGE
         )
 
         return indicatorHighlighter.apply { gutterIconRenderer = indicator }
     }
 
-    @TestOnly fun dispose() {
+    @TestOnly
+    fun dispose() {
         processHandler.destroyProcess()
         consoleTerminated.await(1, TimeUnit.SECONDS)
         Disposer.dispose(disposableDescriptor)
@@ -283,8 +285,9 @@ class KotlinConsoleRunner(
                     charset = CharsetToolkit.UTF8_CHARSET
                     isWritable = false
                 }
-            val psiFile = (PsiFileFactory.getInstance(project) as PsiFileFactoryImpl).trySetupPsiForFile(virtualFile, KotlinLanguage.INSTANCE, true, false) as KtFile?
-                          ?: error("Failed to setup PSI for file:\n$text")
+            val psiFile = (PsiFileFactory.getInstance(project) as PsiFileFactoryImpl)
+                .trySetupPsiForFile(virtualFile, KotlinLanguage.INSTANCE, true, false) as KtFile?
+                ?: error("Failed to setup PSI for file:\n$text")
 
             replState.submitLine(psiFile)
             configureFileDependencies(psiFile)
@@ -304,12 +307,11 @@ class KotlinConsoleRunner(
         }
 
     private fun configureFileDependencies(psiFile: KtFile) {
-        psiFile.forcedModuleInfo = module.testSourceInfo() ?: module.productionSourceInfo() ?:
-                NotUnderContentRootModuleInfo
+        psiFile.forcedModuleInfo = module.testSourceInfo() ?: module.productionSourceInfo() ?: NotUnderContentRootModuleInfo
     }
 }
 
-class ConsoleScriptDefinitionContributor: ScriptDefinitionSourceAsContributor {
+class ConsoleScriptDefinitionContributor : ScriptDefinitionSourceAsContributor {
 
     val definitionsSet = ContainerUtil.newConcurrentSet<ScriptDefinition>()
 
