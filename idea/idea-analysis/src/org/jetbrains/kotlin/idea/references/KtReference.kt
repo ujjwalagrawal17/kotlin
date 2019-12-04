@@ -23,6 +23,7 @@ import org.jetbrains.kotlin.descriptors.DeclarationDescriptor
 import org.jetbrains.kotlin.descriptors.PackageViewDescriptor
 import org.jetbrains.kotlin.idea.caches.resolve.analyze
 import org.jetbrains.kotlin.idea.codeInsight.DescriptorToSourceUtilsIde
+import org.jetbrains.kotlin.idea.util.runReadActionInSmartMode
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.psi.KtElement
 import org.jetbrains.kotlin.psi.KtReferenceExpression
@@ -78,7 +79,7 @@ abstract class AbstractKtReference<T : KtElement>(element: T) : PsiPolyVariantRe
             class KotlinResolveResult(element: PsiElement) : PsiElementResolveResult(element)
 
             private fun resolveToPsiElements(ref: AbstractKtReference<KtElement>): Collection<PsiElement> {
-                val bindingContext = ref.expression.analyze(BodyResolveMode.PARTIAL)
+                val bindingContext = ref.expression.project.runReadActionInSmartMode { ref.expression.analyze(BodyResolveMode.PARTIAL) }
                 return resolveToPsiElements(ref, bindingContext, ref.getTargetDescriptors(bindingContext))
             }
 
