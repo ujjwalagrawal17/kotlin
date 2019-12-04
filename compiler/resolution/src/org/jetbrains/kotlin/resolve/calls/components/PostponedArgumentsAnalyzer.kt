@@ -5,10 +5,12 @@
 
 package org.jetbrains.kotlin.resolve.calls.components
 
+import org.jetbrains.kotlin.builtins.KotlinBuiltIns
 import org.jetbrains.kotlin.builtins.getReceiverTypeFromFunctionType
 import org.jetbrains.kotlin.builtins.getValueParameterTypesFromFunctionType
 import org.jetbrains.kotlin.builtins.isBuiltinFunctionalType
 import org.jetbrains.kotlin.descriptors.annotations.Annotations
+import org.jetbrains.kotlin.descriptors.annotations.FilteredAnnotations
 import org.jetbrains.kotlin.resolve.calls.inference.ConstraintSystemBuilder
 import org.jetbrains.kotlin.resolve.calls.inference.addSubsystemFromArgument
 import org.jetbrains.kotlin.resolve.calls.inference.model.*
@@ -79,16 +81,29 @@ class PostponedArgumentsAnalyzer(
 
         val builtIns = c.getBuilder().builtIns
 
+        val lambdaParameters = lambda.parameters.map(::substitute)
+
         // Expected type has a higher priority against which lambda should be analyzed
         // Mostly, this is needed to report more specific diagnostics on lambda parameters
-        val receiver = expectedOrActualType(lambda.expectedType.receiver(), lambda.receiver)
+        val (receiver, shouldConvertToNonReceiverLambda) = expectedOrActualType(lambda.expectedType.receiver(), lambda.receiver)?.let {
+            if (it != null && lambdaParameters.size == 1 && it == lambdaParameters.first()) null to true
+            else it to false
+        } ?: null to false
+
+        val expectedTypeAnnotations = lambda.expectedType?.annotations?.let { annotations ->
+            if (!shouldConvertToNonReceiverLambda) annotations
+            else FilteredAnnotations(annotations, true) { it != KotlinBuiltIns.FQ_NAMES.extensionFunctionType }
+        }
 
         val expectedParameters = lambda.expectedType.valueParameters()
 
         val parameters =
-            expectedParameters?.mapIndexed { index, expected ->
-                expectedOrActualType(expected, lambda.parameters.getOrNull(index)) ?: builtIns.nothingType
-            } ?: lambda.parameters.map(::substitute)
+            if (shouldConvertToNonReceiverLambda) null
+            else {
+                expectedParameters?.mapIndexed { index, expected ->
+                    expectedOrActualType(expected, lambda.parameters.getOrNull(index)) ?: builtIns.nothingType
+                }
+            } ?: lambdaParameters
 
         val rawReturnType = lambda.returnType
 
@@ -107,7 +122,7 @@ class PostponedArgumentsAnalyzer(
             receiver,
             parameters,
             expectedTypeForReturnArguments,
-            lambda.expectedType?.annotations ?: Annotations.EMPTY,
+            expectedTypeAnnotations ?: Annotations.EMPTY,
             stubsForPostponedVariables.cast()
         )
 

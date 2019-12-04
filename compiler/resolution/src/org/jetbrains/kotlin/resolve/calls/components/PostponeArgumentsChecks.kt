@@ -115,7 +115,8 @@ private fun extractLambdaInfoFromFunctionalType(expectedType: UnwrappedType?, ar
     val parameters = extractLambdaParameters(expectedType, argument)
 
     val argumentAsFunctionExpression = argument.safeAs<FunctionExpression>()
-    val receiverType = argumentAsFunctionExpression?.receiverType ?: expectedType.getReceiverTypeFromFunctionType()?.unwrap()
+    val receiverType = argumentAsFunctionExpression?.receiverType
+        ?: expectedType.getReceiverTypeFromFunctionType()?.unwrap()?.takeUnless { parameters.size == 1 && it == parameters.first() }
     val returnType = argumentAsFunctionExpression?.returnType ?: expectedType.getReturnTypeFromFunctionType().unwrap()
 
     return ResolvedLambdaAtom(
