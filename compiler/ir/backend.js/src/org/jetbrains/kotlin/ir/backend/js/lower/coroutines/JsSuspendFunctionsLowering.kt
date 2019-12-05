@@ -16,10 +16,7 @@ import org.jetbrains.kotlin.ir.builders.*
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.expressions.impl.*
-import org.jetbrains.kotlin.ir.symbols.IrFieldSymbol
-import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
-import org.jetbrains.kotlin.ir.symbols.IrValueParameterSymbol
-import org.jetbrains.kotlin.ir.symbols.IrValueSymbol
+import org.jetbrains.kotlin.ir.symbols.*
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.util.explicitParameters
 import org.jetbrains.kotlin.ir.util.patchDeclarationParents
@@ -83,7 +80,12 @@ class JsSuspendFunctionsLowering(ctx: JsIrBackendContext) : AbstractSuspendFunct
         val unit = context.irBuiltIns.unitType
 
         val switch = IrWhenImpl(body.startOffset, body.endOffset, unit, COROUTINE_SWITCH)
-        val rootTry = IrTryImpl(body.startOffset, body.endOffset, unit).apply { tryResult = switch }
+        val stateVar = JsIrBuilder.buildVar(context.irBuiltIns.intType, stateMachineFunction)
+        val switchBlock = IrBlockImpl(switch.startOffset, switch.endOffset, switch.type).apply {
+            statements += stateVar
+            statements += switch
+        }
+        val rootTry = IrTryImpl(body.startOffset, body.endOffset, unit).apply { tryResult = switchBlock }
         val rootLoop = IrDoWhileLoopImpl(
             body.startOffset,
             body.endOffset,
@@ -97,6 +99,9 @@ class JsSuspendFunctionsLowering(ctx: JsIrBackendContext) : AbstractSuspendFunct
 
         val suspendableNodes = collectSuspendableNodes(body)
         val thisReceiver = (stateMachineFunction.dispatchReceiverParameter as IrValueParameter).symbol
+        stateVar.initializer = JsIrBuilder.buildCall(coroutineImplLabelPropertyGetter.symbol).apply {
+            dispatchReceiver = JsIrBuilder.buildGetValue(thisReceiver)
+        }
 
         val stateMachineBuilder = StateMachineBuilder(
             suspendableNodes,
@@ -118,7 +123,7 @@ class JsSuspendFunctionsLowering(ctx: JsIrBackendContext) : AbstractSuspendFunct
 
         rootTry.catches += stateMachineBuilder.globalCatch
 
-        assignStateIds(stateMachineBuilder.entryState, thisReceiver, switch, rootLoop)
+        assignStateIds(stateMachineBuilder.entryState, stateVar.symbol, switch, rootLoop)
 
         exceptionTrapId = stateMachineBuilder.rootExceptionTrap.id
 
@@ -147,7 +152,7 @@ class JsSuspendFunctionsLowering(ctx: JsIrBackendContext) : AbstractSuspendFunct
         var localCounter = 0
         // TODO: optimize by using the same property for different locals.
         liveLocals.forEach {
-            if (it != suspendState && it != suspendResult) {
+            if (it !== suspendState && it !== suspendResult && it !== stateVar) {
                 localToPropertyMap.getOrPut(it.symbol) {
                     coroutineClass.addField(Name.identifier("${it.name}${localCounter++}"), it.type, (it as? IrVariable)?.isVar ?: false)
                         .symbol
@@ -161,33 +166,6 @@ class JsSuspendFunctionsLowering(ctx: JsIrBackendContext) : AbstractSuspendFunct
         }
 
         stateMachineFunction.transform(LiveLocalsTransformer(localToPropertyMap, { JsIrBuilder.buildGetValue(thisReceiver) }, unit), null)
-    }
-
-    private fun assignStateIds(entryState: SuspendState, thisReceiver: IrValueParameterSymbol, switch: IrWhen, rootLoop: IrLoop) {
-        val visited = mutableSetOf<SuspendState>()
-
-        val sortedStates = DFS.topologicalOrder(listOf(entryState), { it.successors }, { visited.add(it) })
-        sortedStates.withIndex().forEach { it.value.id = it.index }
-
-        val eqeqeqInt = context.irBuiltIns.eqeqeqSymbol
-
-        for (state in sortedStates) {
-            val condition = JsIrBuilder.buildCall(eqeqeqInt).apply {
-                putValueArgument(0, JsIrBuilder.buildCall(coroutineImplLabelPropertyGetter.symbol).also {
-                    it.dispatchReceiver = JsIrBuilder.buildGetValue(thisReceiver)
-                })
-                putValueArgument(1, JsIrBuilder.buildInt(context.irBuiltIns.intType, state.id))
-            }
-
-            switch.branches += IrBranchImpl(state.entryBlock.startOffset, state.entryBlock.endOffset, condition, state.entryBlock)
-        }
-
-        val dispatchPointTransformer = DispatchPointTransformer {
-            assert(it.id >= 0)
-            JsIrBuilder.buildInt(context.irBuiltIns.intType, it.id)
-        }
-
-        rootLoop.transformChildrenVoid(dispatchPointTransformer)
     }
 
     private fun computeLivenessAtSuspensionPoints(body: IrBody): Map<IrCall, List<IrValueDeclaration>> {
@@ -206,6 +184,31 @@ class JsSuspendFunctionsLowering(ctx: JsIrBackendContext) : AbstractSuspendFunct
         })
 
         return result
+    }
+
+    private fun assignStateIds(entryState: SuspendState, subject: IrVariableSymbol, switch: IrWhen, rootLoop: IrLoop) {
+        val visited = mutableSetOf<SuspendState>()
+
+        val sortedStates = DFS.topologicalOrder(listOf(entryState), { it.successors }, { visited.add(it) })
+        sortedStates.withIndex().forEach { it.value.id = it.index }
+
+        val eqeqeqInt = context.irBuiltIns.eqeqeqSymbol
+
+        for (state in sortedStates) {
+            val condition = JsIrBuilder.buildCall(eqeqeqInt).apply {
+                putValueArgument(0, JsIrBuilder.buildGetValue(subject))
+                putValueArgument(1, JsIrBuilder.buildInt(context.irBuiltIns.intType, state.id))
+            }
+
+            switch.branches += IrBranchImpl(state.entryBlock.startOffset, state.entryBlock.endOffset, condition, state.entryBlock)
+        }
+
+        val dispatchPointTransformer = DispatchPointTransformer {
+            assert(it.id >= 0)
+            JsIrBuilder.buildInt(context.irBuiltIns.intType, it.id)
+        }
+
+        rootLoop.transformChildrenVoid(dispatchPointTransformer)
     }
 
 
