@@ -13,6 +13,7 @@ import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.descriptors.annotations.Annotations
 import org.jetbrains.kotlin.ir.IrElement
+import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.ir.builders.Scope
 import org.jetbrains.kotlin.ir.declarations.*
@@ -594,3 +595,20 @@ fun copyBodyToStatic(oldFunction: IrFunction, staticFunction: IrFunction) {
 
 val IrSymbol.isSuspend: Boolean
     get() = this is IrSimpleFunctionSymbol && owner.isSuspend
+
+fun IrStatement.isPure(anyVariable: Boolean): Boolean {
+    return when (this) {
+        is IrConst<*> -> true
+        is IrGetValue -> {
+            if (anyVariable) return true
+            val valueDeclaration = symbol.owner
+            if (valueDeclaration is IrValueParameter) true
+            else {
+                val variable = valueDeclaration as IrVariable
+                variable.run { isConst || !isVar }
+            }
+        }
+        is IrGetObjectValue -> type.isUnit()
+        else -> false
+    }
+}

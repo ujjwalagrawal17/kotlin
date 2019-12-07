@@ -6,6 +6,7 @@
 package org.jetbrains.kotlin.ir.backend.js.lower
 
 import org.jetbrains.kotlin.backend.common.FileLoweringPass
+import org.jetbrains.kotlin.backend.common.ir.isPure
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
 import org.jetbrains.kotlin.ir.backend.js.ir.JsIrArithBuilder
@@ -199,9 +200,13 @@ class TypeOperatorLowering(val context: JsIrBackendContext) : FileLoweringPass {
                 newStatements: MutableList<IrStatement>,
                 declaration: IrDeclarationParent
             ): () -> IrExpressionWithCopy {
-                val varDeclaration = JsIrBuilder.buildVar(value.type, declaration, initializer = value)
-                newStatements += varDeclaration
-                return { JsIrBuilder.buildGetValue(varDeclaration.symbol) }
+                return if (value.isPure(true)) {
+                    { value.deepCopyWithSymbols() as IrExpressionWithCopy }
+                } else {
+                    val varDeclaration = JsIrBuilder.buildVar(value.type, declaration, initializer = value)
+                    newStatements += varDeclaration
+                    { JsIrBuilder.buildGetValue(varDeclaration.symbol) }
+                }
             }
 
             private fun generateTypeCheck(argument: () -> IrExpressionWithCopy, toType: IrType): IrExpression {
