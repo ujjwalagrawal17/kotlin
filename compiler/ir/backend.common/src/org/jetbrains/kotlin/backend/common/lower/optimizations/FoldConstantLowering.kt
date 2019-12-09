@@ -16,6 +16,7 @@ import org.jetbrains.kotlin.ir.expressions.impl.IrStringConcatenationImpl
 import org.jetbrains.kotlin.ir.types.*
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.ir.util.isUnsigned
+import org.jetbrains.kotlin.ir.util.render
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
 import org.jetbrains.kotlin.resolve.constants.evaluate.evaluateBinary
@@ -107,8 +108,11 @@ class FoldConstantLowering(private val context: CommonBackendContext) : IrElemen
 
     private fun tryFoldingUnaryOps(call: IrCall): IrExpression {
         val operand = call.dispatchReceiver as? IrConst<*> ?: return call
-        val evaluated = evaluateUnary(
-            call.symbol.owner.name.toString(),
+        val operationName = call.symbol.owner.name.toString()
+
+        // Since there is no distinguish between signed and unsigned types a special handling for `toString` is required
+        val evaluated = if (operationName == "toString") constToString(operand) else evaluateUnary(
+            operationName,
             operand.kind.toString(),
             operand.value!!
         ) ?: return call
@@ -120,7 +124,6 @@ class FoldConstantLowering(private val context: CommonBackendContext) : IrElemen
         val rhs = call.getValueArgument(0) as? IrConst<*> ?: return call
 
         val evaluated = try {
-            fun String.toNonNullable() = if (this.endsWith('?')) this.dropLast(1) else this
             evaluateBinary(
                 call.symbol.owner.name.toString(),
                 lhs.kind.toString(),
@@ -129,7 +132,7 @@ class FoldConstantLowering(private val context: CommonBackendContext) : IrElemen
                 //    The passed parameters are guaranteed to be non-null, since they are from IrConst.
                 // 2. The operators are registered with prototype as if virtual member functions. They are identified by
                 //    actual_receiver_type.operator_name(parameter_type_in_prototype).
-                call.symbol.owner.valueParameters[0].type.toKotlinType().toString().toNonNullable(),
+                call.symbol.owner.valueParameters[0].type.makeNotNull().render().removePrefix("kotlin."),
                 rhs.value!!
             ) ?: return call
         } catch (e: Exception) {
@@ -159,6 +162,23 @@ class FoldConstantLowering(private val context: CommonBackendContext) : IrElemen
         return buildIrConstant(call, evaluated)
     }
 
+    // Unsigned constants are represented through signed constants with a different IrType.
+    private fun constToString(const: IrConst<*>): String {
+        if (const.type.isUnsigned()) {
+            when (val kind = const.kind) {
+                is IrConstKind.Byte ->
+                    return kind.valueOf(const).toUByte().toString()
+                is IrConstKind.Short ->
+                    return kind.valueOf(const).toUShort().toString()
+                is IrConstKind.Int ->
+                    return kind.valueOf(const).toUInt().toString()
+                is IrConstKind.Long ->
+                    return kind.valueOf(const).toULong().toString()
+            }
+        }
+        return const.value.toString()
+    }
+
     @ExperimentalUnsignedTypes
     override fun lower(irFile: IrFile) {
         irFile.transformChildrenVoid(object : IrElementTransformerVoid() {
@@ -172,19 +192,6 @@ class FoldConstantLowering(private val context: CommonBackendContext) : IrElemen
                     expression.dispatchReceiver == null && expression.valueArgumentsCount == 2 -> tryFoldingBuiltinBinaryOps(expression)
                     else -> expression
                 }
-            }
-
-            // Unsigned constants are represented through signed constants with a different IrType.
-            private fun constToString(const: IrConst<*>): String {
-                if (const.type.isUnsigned()) {
-                    when (val kind = const.kind) {
-                        is IrConstKind.Byte -> return kind.valueOf(const).toUByte().toString()
-                        is IrConstKind.Short -> return kind.valueOf(const).toUShort().toString()
-                        is IrConstKind.Int -> return kind.valueOf(const).toUInt().toString()
-                        is IrConstKind.Long -> return kind.valueOf(const).toULong().toString()
-                    }
-                }
-                return const.value.toString()
             }
 
             override fun visitStringConcatenation(expression: IrStringConcatenation): IrExpression {
