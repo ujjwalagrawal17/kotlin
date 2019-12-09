@@ -9,11 +9,8 @@ import kotlin.coroutines.Continuation
 
 interface CheckerSink {
     fun reportApplicability(new: CandidateApplicability)
-    suspend fun yield()
-    suspend fun yieldApplicability(new: CandidateApplicability) {
-        reportApplicability(new)
-        yield()
-    }
+
+    suspend fun yieldApplicability(new: CandidateApplicability)
 
     val components: InferenceComponents
 
@@ -26,7 +23,12 @@ class CheckerSinkImpl(override val components: InferenceComponents, var continua
         if (new < current) current = new
     }
 
-    override suspend fun yield() = kotlin.coroutines.intrinsics.suspendCoroutineUninterceptedOrReturn<Unit> {
+    override suspend fun yieldApplicability(new: CandidateApplicability) {
+        reportApplicability(new)
+        yield()
+    }
+
+    suspend fun yield() = kotlin.coroutines.intrinsics.suspendCoroutineUninterceptedOrReturn<Unit> {
         continuation = it
         kotlin.coroutines.intrinsics.COROUTINE_SUSPENDED
     }
