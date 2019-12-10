@@ -290,12 +290,12 @@ class FirCallResolver(
         val callInfo = CallInfo(
             CallKind.Function,
             explicitReceiver = null,
-            delegatedConstructorCall.arguments,
+            arguments = delegatedConstructorCall.arguments,
             isSafeCall = false,
             typeArguments = typeArguments,
-            session,
-            file,
-            implicitReceiverStack
+            session = session,
+            containingFile = file,
+            implicitReceiverStack = implicitReceiverStack
         ) { it.resultType }
         val candidateFactory = CandidateFactory(this, callInfo)
         val candidates = mutableListOf<Candidate>()
@@ -307,7 +307,7 @@ class FirCallResolver(
                     it,
                     dispatchReceiverValue = null,
                     implicitExtensionReceiverValue = null,
-                    ExplicitReceiverKind.NO_EXPLICIT_RECEIVER
+                    explicitReceiverKind = ExplicitReceiverKind.NO_EXPLICIT_RECEIVER
                 )
             }
             ProcessorAction.NEXT

@@ -85,10 +85,10 @@ class FirIntegerLiteralTypeScope(private val session: FirSession) : FirScope() {
                 val valueParameterName = Name.identifier("arg")
                 valueParameters += FirValueParameterImpl(
                     source = null,
-                    session,
-                    FirILTTypeRefPlaceHolder(),
-                    valueParameterName,
-                    FirVariableSymbol(name),
+                    session = session,
+                    returnTypeRef = FirILTTypeRefPlaceHolder(),
+                    name = valueParameterName,
+                    symbol = FirVariableSymbol(name),
                     defaultValue = null,
                     isCrossinline = false,
                     isNoinline = false,
@@ -104,12 +104,12 @@ class FirIntegerLiteralTypeScope(private val session: FirSession) : FirScope() {
 
     private fun createFirFunction(name: Name, symbol: FirNamedFunctionSymbol): FirSimpleFunctionImpl = FirIntegerOperator(
         source = null,
-        session,
-        FirILTTypeRefPlaceHolder(),
+        session = session,
+        returnTypeRef = FirILTTypeRefPlaceHolder(),
         receiverTypeRef = null,
-        ALL_OPERATORS.getValue(name),
-        FirResolvedDeclarationStatusImpl(Visibilities.PUBLIC, Modality.FINAL),
-        symbol
+        kind = ALL_OPERATORS.getValue(name),
+        status = FirResolvedDeclarationStatusImpl(Visibilities.PUBLIC, Modality.FINAL),
+        symbol = symbol
     ).apply {
         resolvePhase = FirResolvePhase.BODY_RESOLVE
     }
