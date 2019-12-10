@@ -7,35 +7,46 @@ package org.jetbrains.kotlin.fir.resolve.calls
 
 import kotlin.coroutines.Continuation
 
-interface CheckerSink {
-    fun reportApplicability(new: CandidateApplicability)
+abstract class CheckerSink {
+    abstract fun reportApplicability(new: CandidateApplicability)
 
-    suspend fun yieldApplicability(new: CandidateApplicability)
+    abstract val components: InferenceComponents
 
-    val components: InferenceComponents
+    abstract val needYielding: Boolean
 
-    suspend fun yieldIfNeed()
+    @Deprecated(
+        "This function yields unconditionally, exposed only for yieldIfNeed",
+        level = DeprecationLevel.WARNING,
+        replaceWith = ReplaceWith("yieldIfNeed")
+    )
+    abstract suspend fun yield()
 }
 
-class CheckerSinkImpl(override val components: InferenceComponents, var continuation: Continuation<Unit>? = null) : CheckerSink {
+suspend inline fun CheckerSink.yieldIfNeed() {
+    if (needYielding) {
+        @Suppress("DEPRECATION")
+        yield()
+    }
+}
+
+suspend inline fun CheckerSink.yieldApplicability(new: CandidateApplicability) {
+    reportApplicability(new)
+    yieldIfNeed()
+}
+
+class CheckerSinkImpl(override val components: InferenceComponents, var continuation: Continuation<Unit>? = null) : CheckerSink() {
     var current = CandidateApplicability.RESOLVED
     override fun reportApplicability(new: CandidateApplicability) {
         if (new < current) current = new
     }
 
-    override suspend fun yieldApplicability(new: CandidateApplicability) {
-        reportApplicability(new)
-        yield()
-    }
-
-    suspend fun yield() = kotlin.coroutines.intrinsics.suspendCoroutineUninterceptedOrReturn<Unit> {
+    @Suppress("OverridingDeprecatedMember")
+    override suspend fun yield() = kotlin.coroutines.intrinsics.suspendCoroutineUninterceptedOrReturn<Unit> {
         continuation = it
         kotlin.coroutines.intrinsics.COROUTINE_SUSPENDED
     }
 
-    override suspend fun yieldIfNeed() {
-        if (current < CandidateApplicability.SYNTHETIC_RESOLVED) {
-            yield()
-        }
-    }
+    override val needYielding: Boolean
+        get() = current < CandidateApplicability.SYNTHETIC_RESOLVED
+
 }
