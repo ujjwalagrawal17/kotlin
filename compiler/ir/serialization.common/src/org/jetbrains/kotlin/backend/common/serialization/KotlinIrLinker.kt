@@ -135,7 +135,11 @@ abstract class KotlinIrLinker(
         private val moduleDeserializationState = DeserializationState.ModuleDeserializationState(this)
         val moduleReversedFileIndex = mutableMapOf<UniqId, IrDeserializerForFile>()
         private val moduleDependencies by lazy {
-            moduleDescriptor.allDependencyModules.filter { it != moduleDescriptor }.map { deserializersForModules[it]!! }
+            // TODO: Substituting actual instead on expect creates use links going against library dependency dag.
+            // So instead of something like
+            // moduleDescriptor.allDependencyModules.filter { it != moduleDescriptor }.map { deserializersForModules[it]!! }
+            // we just search in all deserializers:
+            deserializersForModules.values.minus(this)
         }
 
         // This is a heavy initializer
