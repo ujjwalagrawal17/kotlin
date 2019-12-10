@@ -24,8 +24,8 @@ sealed class FirClassLikeSymbol<D>(
 
 sealed class FirClassSymbol<C : FirClass<C>>(classId: ClassId) : FirClassLikeSymbol<C>(classId) {
     private val lookupTag =
-        if (classId.isLocal) ConeClassLookupTagWithFixedSymbol(classId, this)
-        else ConeClassLikeLookupTagImpl(classId)
+        ConeClassLookupTagWithFixedSymbol(classId, this)
+
 
     override fun toLookupTag(): ConeClassLikeLookupTag = lookupTag
 }
