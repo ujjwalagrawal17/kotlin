@@ -112,8 +112,8 @@ abstract class AbstractSimpleFileBenchmark {
 
         if (isIR) {
             Extensions.getArea(env.project)
-                    .getExtensionPoint(PsiElementFinder.EP_NAME)
-                    .unregisterExtension(JavaElementFinder::class.java)
+                .getExtensionPoint(PsiElementFinder.EP_NAME)
+                .unregisterExtension(JavaElementFinder::class.java)
         }
 
         file = createFile(
