@@ -45,6 +45,8 @@ class ClassDispatchReceiverValue(val klassSymbol: FirClassSymbol<*>) : ReceiverV
     override val receiverExpression: FirExpression = receiverExpression(klassSymbol, type)
 }
 
+private val UNINITIALIZED = Any()
+
 class ExpressionReceiverValue(
     val explicitReceiverExpression: FirExpression,
     val typeProvider: (FirExpression) -> FirTypeRef?
@@ -52,6 +54,16 @@ class ExpressionReceiverValue(
     override val type: ConeKotlinType
         get() = typeProvider(explicitReceiverExpression)?.coneTypeSafe()
             ?: ConeKotlinErrorType("No type calculated for: ${explicitReceiverExpression.renderWithType()}") // TODO: assert here
+
+    private var cachedScope: Any? = UNINITIALIZED
+
+    override fun scope(useSiteSession: FirSession, scopeSession: ScopeSession): FirScope? {
+        if (cachedScope !== UNINITIALIZED) return cachedScope as FirScope?
+
+        return super.scope(useSiteSession, scopeSession).also {
+            cachedScope = it
+        }
+    }
 
     override val receiverExpression: FirExpression
         get() = explicitReceiverExpression
