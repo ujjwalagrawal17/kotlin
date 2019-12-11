@@ -7,6 +7,7 @@ package org.jetbrains.kotlin.idea.scratch.compile
 
 import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.process.CapturingProcessHandler
+import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.diagnostic.ControlFlowException
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.progress.ProgressIndicator
@@ -14,6 +15,7 @@ import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.util.Computable
 import com.intellij.openapi.util.io.FileUtil
+import com.intellij.util.concurrency.NonUrgentExecutor
 import org.jetbrains.kotlin.codegen.ClassBuilderFactories
 import org.jetbrains.kotlin.codegen.KotlinCodegenFacade
 import org.jetbrains.kotlin.codegen.filterClassFiles
@@ -28,7 +30,6 @@ import org.jetbrains.kotlin.idea.scratch.ScratchFile
 import org.jetbrains.kotlin.idea.scratch.printDebugMessage
 import org.jetbrains.kotlin.idea.util.JavaParametersBuilder
 import org.jetbrains.kotlin.idea.util.application.runReadAction
-import org.jetbrains.kotlin.idea.util.runReadActionInSmartMode
 import org.jetbrains.kotlin.psi.*
 import java.io.File
 
@@ -40,6 +41,7 @@ class KtScratchExecutionSession(
         private const val TIMEOUT_MS = 30000
     }
 
+    @Volatile
     private var backgroundProcessIndicator: ProgressIndicator? = null
 
     fun execute(callback: () -> Unit) {
@@ -48,58 +50,64 @@ class KtScratchExecutionSession(
         val expressions = file.getExpressions()
         if (!executor.checkForErrors(psiFile, expressions)) return
 
-        when (val result = file.project.runReadActionInSmartMode { KtScratchSourceFileProcessor().process(expressions) }) {
-            is KtScratchSourceFileProcessor.Result.Error -> return executor.errorOccurs(result.message, isFatal = true)
-            is KtScratchSourceFileProcessor.Result.OK -> {
-                LOG.printDebugMessage("After processing by KtScratchSourceFileProcessor:\n ${result.code}")
+        val project = file.project
+        ReadAction.nonBlocking {
+                when (val result = KtScratchSourceFileProcessor().process(expressions)) {
+                    is KtScratchSourceFileProcessor.Result.Error -> return@nonBlocking executor.errorOccurs(result.message, isFatal = true)
+                    is KtScratchSourceFileProcessor.Result.OK -> {
+                        LOG.printDebugMessage("After processing by KtScratchSourceFileProcessor:\n ${result.code}")
 
-                object : Task.Backgroundable(psiFile.project, "Running Kotlin Scratch...", true) {
-                    override fun run(indicator: ProgressIndicator) {
-                        backgroundProcessIndicator = indicator
+                        object : Task.Backgroundable(psiFile.project, "Running Kotlin Scratch...", true) {
+                            override fun run(indicator: ProgressIndicator) {
+                                backgroundProcessIndicator = indicator
 
-                        val modifiedScratchSourceFile = runReadAction {
-                            KtPsiFactory(psiFile.project).createFileWithLightClassSupport("tmp.kt", result.code, psiFile)
-                        }
-
-                        try {
-                            val tempDir = DumbService.getInstance(project).runReadActionInSmartMode(
-                                Computable {
-                                    compileFileToTempDir(modifiedScratchSourceFile, expressions)
+                                val modifiedScratchSourceFile = runReadAction {
+                                    KtPsiFactory(psiFile.project).createFileWithLightClassSupport("tmp.kt", result.code, psiFile)
                                 }
-                            ) ?: return
 
-                            try {
-                                val commandLine = createCommandLine(psiFile, file.module, result.mainClassName, tempDir.path)
+                                try {
+                                    val tempDir = DumbService.getInstance(project).runReadActionInSmartMode(
+                                        Computable {
+                                            compileFileToTempDir(modifiedScratchSourceFile, expressions)
+                                        }
+                                    ) ?: return
 
-                                LOG.printDebugMessage(commandLine.commandLineString)
+                                    try {
+                                        val commandLine = createCommandLine(psiFile, file.module, result.mainClassName, tempDir.path)
 
-                                val processHandler = CapturingProcessHandler(commandLine)
-                                val executionResult = processHandler.runProcessWithProgressIndicator(indicator, TIMEOUT_MS)
-                                when {
-                                    executionResult.isTimeout -> {
-                                        executor.errorOccurs("Couldn't get scratch execution result - stopped by timeout ($TIMEOUT_MS ms)")
+                                        LOG.printDebugMessage(commandLine.commandLineString)
+
+                                        val processHandler = CapturingProcessHandler(commandLine)
+                                        val executionResult = processHandler.runProcessWithProgressIndicator(indicator, TIMEOUT_MS)
+                                        when {
+                                            executionResult.isTimeout -> {
+                                                executor.errorOccurs("Couldn't get scratch execution result - stopped by timeout ($TIMEOUT_MS ms)")
+                                            }
+                                            executionResult.isCancelled -> {
+                                                // ignore
+                                            }
+                                            else -> {
+                                                executor.parseOutput(executionResult, expressions)
+                                            }
+                                        }
+                                    } finally {
+                                        tempDir.delete()
+                                        callback()
                                     }
-                                    executionResult.isCancelled -> {
-                                        // ignore
-                                    }
-                                    else -> {
-                                        executor.parseOutput(executionResult, expressions)
-                                    }
+                                } catch (e: Throwable) {
+                                    if (e is ControlFlowException) throw e
+
+                                    LOG.printDebugMessage(result.code)
+                                    executor.errorOccurs(e.message ?: "Couldn't compile ${psiFile.name}", e, isFatal = true)
                                 }
-                            } finally {
-                                tempDir.delete()
-                                callback()
                             }
-                        } catch (e: Throwable) {
-                            if (e is ControlFlowException) throw e
-
-                            LOG.printDebugMessage(result.code)
-                            executor.errorOccurs(e.message ?: "Couldn't compile ${psiFile.name}", e, isFatal = true)
-                        }
+                        }.queue()
                     }
-                }.queue()
+                }
             }
-        }
+            .inSmartMode(project)
+            .expireWith(project)
+            .submit(NonUrgentExecutor.getInstance())
     }
 
     fun stop() {
