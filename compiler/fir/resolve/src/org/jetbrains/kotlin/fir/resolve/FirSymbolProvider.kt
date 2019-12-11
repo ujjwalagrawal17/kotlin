@@ -39,7 +39,7 @@ abstract class FirSymbolProvider : FirSessionComponent {
 
     fun getSymbolByLookupTag(lookupTag: ConeClassLikeLookupTag): FirClassLikeSymbol<*>? {
         (lookupTag as? ConeClassLikeLookupTagImpl)
-            ?.boundSymbol?.let { return it.second }
+            ?.boundSymbol?.takeIf { it.first === this }?.let { return it.second }
 
         return getClassLikeSymbolByFqName(lookupTag.classId).also {
             (lookupTag as? ConeClassLikeLookupTagImpl)?.bindSymbolToLookupTag(this, it)
