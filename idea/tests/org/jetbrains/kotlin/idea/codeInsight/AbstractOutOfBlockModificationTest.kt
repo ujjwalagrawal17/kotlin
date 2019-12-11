@@ -13,7 +13,6 @@ import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiManager
 import com.intellij.psi.impl.PsiModificationTrackerImpl
 import com.intellij.psi.util.PsiTreeUtil
-import junit.framework.TestCase
 import org.jetbrains.kotlin.idea.caches.resolve.analyzeWithAllCompilerChecks
 import org.jetbrains.kotlin.idea.caches.resolve.getResolutionFacade
 import org.jetbrains.kotlin.idea.caches.trackers.outOfBlockModificationCount
@@ -33,14 +32,14 @@ abstract class AbstractOutOfBlockModificationTest : KotlinLightCodeInsightFixtur
             ktFile.text,
             SKIP_ANALYZE_CHECK_DIRECTIVE
         )
-        TestCase.assertTrue(
+        assertTrue(
             "It's allowed to skip check with analyze only for tests where out-of-block is expected",
             !isSkipCheckDefined || expectedOutOfBlock
         )
         val tracker =
             PsiManager.getInstance(myFixture.project).modificationTracker as PsiModificationTrackerImpl
         val element = ktFile.findElementAt(myFixture.caretOffset)
-        TestCase.assertNotNull("Should be valid element", element)
+        assertNotNull("Should be valid element", element)
         val oobBeforeType = ktFile.outOfBlockModificationCount
         val modificationCountBeforeType = tracker.modificationCount
 
@@ -51,11 +50,11 @@ abstract class AbstractOutOfBlockModificationTest : KotlinLightCodeInsightFixtur
         PsiDocumentManager.getInstance(myFixture.project).commitDocument(myFixture.getDocument(myFixture.file))
         val oobAfterCount = ktFile.outOfBlockModificationCount
         val modificationCountAfterType = tracker.modificationCount
-        TestCase.assertTrue(
+        assertTrue(
             "Modification tracker should always be changed after type",
             modificationCountBeforeType != modificationCountAfterType
         )
-        TestCase.assertEquals(
+        assertEquals(
             "Result for out of block test is differs from expected on element in file:\n"
                     + FileUtil.loadFile(testDataFile()),
             expectedOutOfBlock, oobBeforeType != oobAfterCount
@@ -83,14 +82,14 @@ abstract class AbstractOutOfBlockModificationTest : KotlinLightCodeInsightFixtur
         val ktElement = ktExpression ?: ktDeclaration ?: return
         val facade = ktElement.containingKtFile.getResolutionFacade()
         val session = facade.getFrontendService(ResolveSession::class.java)
+
         session.forceResolveAll()
         val context = session.bindingContext
         if (ktExpression != null && ktExpression !== ktDeclaration) {
-            val expressionProcessed = context.get(
-                BindingContext.PROCESSED,
-                if (ktExpression is KtFunctionLiteral) ktExpression.getParent() as KtLambdaExpression else ktExpression
-            ) === java.lang.Boolean.TRUE
-            TestCase.assertEquals(
+            val expression = if (ktExpression is KtFunctionLiteral) ktExpression.getParent() as KtLambdaExpression else ktExpression
+            val processed = context.get(BindingContext.PROCESSED, expression)
+            val expressionProcessed = processed === java.lang.Boolean.TRUE
+            assertEquals(
                 "Expected out-of-block should result expression analyzed and vise versa", expectedOutOfBlock,
                 expressionProcessed
             )
@@ -100,7 +99,7 @@ abstract class AbstractOutOfBlockModificationTest : KotlinLightCodeInsightFixtur
                     BindingContext.DECLARATION_TO_DESCRIPTOR,
                     ktDeclaration
                 ) != null
-            TestCase.assertEquals(
+            assertEquals(
                 "Expected out-of-block should result declaration analyzed and vise versa", expectedOutOfBlock,
                 declarationProcessed
             )
