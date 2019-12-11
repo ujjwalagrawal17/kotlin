@@ -17,6 +17,7 @@ import org.jetbrains.kotlin.fir.resolve.substitution.ConeSubstitutor
 import org.jetbrains.kotlin.fir.resolve.substitution.substitutorByMap
 import org.jetbrains.kotlin.fir.resolve.transformers.body.resolve.firUnsafe
 import org.jetbrains.kotlin.fir.symbols.AbstractFirBasedSymbol
+import org.jetbrains.kotlin.fir.symbols.ConeTypeParameterLookupTag
 import org.jetbrains.kotlin.fir.symbols.StandardClassIds
 import org.jetbrains.kotlin.fir.symbols.impl.*
 import org.jetbrains.kotlin.fir.symbols.invoke
@@ -62,13 +63,8 @@ interface ConeTypeContext : TypeSystemContext, TypeSystemOptimizationContext, Ty
         assert(this is ConeKotlinType)
         return when (this) {
             is ConeClassLikeType -> fullyExpandedType(session)
-            is ConeCapturedType -> this
-            is ConeLookupTagBasedType -> this
-            is ConeDefinitelyNotNullType -> this
-            is ConeIntersectionType -> this
+            is ConeSimpleKotlinType -> this
             is ConeFlexibleType -> null
-            is ConeStubType -> this
-            is ConeIntegerLiteralType -> this
             else -> error("Unknown simpleType: $this")
         }
     }
@@ -130,11 +126,11 @@ interface ConeTypeContext : TypeSystemContext, TypeSystemOptimizationContext, Ty
 
     override fun SimpleTypeMarker.typeConstructor(): TypeConstructorMarker {
         return when (this) {
-            is ConeCapturedType -> constructor
-            is ConeTypeVariableType -> lookupTag as ConeTypeVariableTypeConstructor // TODO: WTF
             is ConeClassLikeType -> lookupTag.toSymbol(session)
                 ?: ErrorTypeConstructor("Unresolved: $lookupTag")
-            is ConeLookupTagBasedType -> lookupTag.toSymbol(session) ?: ErrorTypeConstructor("Unresolved: $lookupTag")
+            is ConeTypeParameterType -> lookupTag.typeParameterSymbol
+            is ConeCapturedType -> constructor
+            is ConeTypeVariableType -> lookupTag as ConeTypeVariableTypeConstructor // TODO: WTF
             is ConeIntersectionType -> this
             is ConeStubType -> variable.typeConstructor
             is ConeDefinitelyNotNullType -> original.typeConstructor()

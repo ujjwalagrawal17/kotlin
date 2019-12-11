@@ -5,14 +5,10 @@
 
 package org.jetbrains.kotlin.fir.types
 
-import org.jetbrains.kotlin.descriptors.annotations.Annotations
 import org.jetbrains.kotlin.fir.symbols.ConeClassLikeLookupTag
 import org.jetbrains.kotlin.fir.symbols.ConeClassifierLookupTag
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
-import org.jetbrains.kotlin.resolve.constants.IntegerLiteralTypeConstructor
-import org.jetbrains.kotlin.types.KotlinTypeFactory
-import org.jetbrains.kotlin.types.SimpleType
 import org.jetbrains.kotlin.types.model.*
 
 sealed class ConeKotlinTypeProjection : TypeArgumentMarker {
@@ -86,6 +82,8 @@ sealed class ConeKotlinType : ConeKotlinTypeProjection(), ConeTypedProjection, K
     }
 }
 
+abstract class ConeSimpleKotlinType : ConeKotlinType(), SimpleTypeMarker
+
 val ConeKotlinType.isNullable: Boolean get() = nullability != ConeNullability.NOT_NULL
 
 val ConeKotlinType.isMarkedNullable: Boolean get() = nullability == ConeNullability.NULLABLE
@@ -109,7 +107,7 @@ class ConeClassErrorType(val reason: String) : ConeClassLikeType() {
     }
 }
 
-abstract class ConeLookupTagBasedType : ConeKotlinType(), SimpleTypeMarker {
+abstract class ConeLookupTagBasedType : ConeSimpleKotlinType() {
     abstract val lookupTag: ConeClassifierLookupTag
 }
 
@@ -165,7 +163,7 @@ class ConeCapturedType(
     val lowerType: ConeKotlinType?,
     override val nullability: ConeNullability = ConeNullability.NOT_NULL,
     val constructor: ConeCapturedTypeConstructor
-) : ConeKotlinType(), SimpleTypeMarker, CapturedTypeMarker {
+) : ConeSimpleKotlinType(), CapturedTypeMarker {
     constructor(captureStatus: CaptureStatus, lowerType: ConeKotlinType?, projection: ConeKotlinTypeProjection) : this(
         captureStatus,
         lowerType,
@@ -185,7 +183,7 @@ class ConeTypeVariableType(
     override val typeArguments: Array<out ConeKotlinTypeProjection> get() = emptyArray()
 }
 
-class ConeDefinitelyNotNullType private constructor(val original: ConeKotlinType) : ConeKotlinType(), DefinitelyNotNullTypeMarker {
+class ConeDefinitelyNotNullType private constructor(val original: ConeKotlinType) : ConeSimpleKotlinType(), DefinitelyNotNullTypeMarker {
     override val typeArguments: Array<out ConeKotlinTypeProjection>
         get() = original.typeArguments
     override val nullability: ConeNullability
@@ -209,7 +207,7 @@ class ConeRawType(lowerBound: ConeKotlinType, upperBound: ConeKotlinType) : Cone
  */
 class ConeIntersectionType(
     val intersectedTypes: Collection<ConeKotlinType>
-) : ConeKotlinType(), SimpleTypeMarker, TypeConstructorMarker {
+) : ConeSimpleKotlinType(), TypeConstructorMarker {
     override val typeArguments: Array<out ConeKotlinTypeProjection>
         get() = emptyArray()
 
@@ -221,7 +219,7 @@ fun ConeIntersectionType.mapTypes(func: (ConeKotlinType) -> ConeKotlinType): Con
     return ConeIntersectionType(intersectedTypes.map(func))
 }
 
-class ConeStubType(val variable: ConeTypeVariable, override val nullability: ConeNullability) : StubTypeMarker, ConeKotlinType() {
+class ConeStubType(val variable: ConeTypeVariable, override val nullability: ConeNullability) : StubTypeMarker, ConeSimpleKotlinType() {
     override val typeArguments: Array<out ConeKotlinTypeProjection>
         get() = emptyArray()
 }
@@ -235,7 +233,7 @@ class ConeTypeVariableTypeConstructor(val debugName: String) : ConeClassifierLoo
     override val name: Name get() = Name.identifier(debugName)
 }
 
-abstract class ConeIntegerLiteralType(val value: Long) : ConeKotlinType(), SimpleTypeMarker, TypeConstructorMarker {
+abstract class ConeIntegerLiteralType(val value: Long) : ConeSimpleKotlinType(), TypeConstructorMarker {
     abstract val possibleTypes: Collection<ConeClassLikeType>
     abstract val supertypes: List<ConeClassLikeType>
 

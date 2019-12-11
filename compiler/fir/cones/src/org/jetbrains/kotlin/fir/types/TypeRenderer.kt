@@ -47,6 +47,7 @@ fun ConeKotlinType.render(): String {
         }
         is ConeStubType -> "stub type: $variable"
         is ConeIntegerLiteralType -> "ILT: $value"
+        is ConeSimpleKotlinType -> error("Unknown simple type: $this")
     } + nullabilitySuffix
 }
 
