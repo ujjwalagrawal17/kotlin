@@ -224,6 +224,8 @@ internal abstract class AbstractScriptConfigurationManager(
 
         clearClassRootsCaches()
 
+        cache.clear()
+
         if (project.isOpen) {
             val openedScripts = FileEditorManager.getInstance(project).openFiles.filterNot { it.isNonScript() }
             updateHighlighting(openedScripts)
