@@ -83,7 +83,7 @@ class FirTypeResolverImpl(private val session: FirSession) : FirTypeResolver {
         if (symbol == null) {
             return ConeKotlinErrorType("Symbol not found, for `${typeRef.render()}`")
         }
-        return symbol.constructType(typeRef.qualifier, typeRef.isMarkedNullable, symbolOriginSession = session)
+        return symbol.constructType(typeRef.qualifier, typeRef.isMarkedNullable)
     }
 
 
@@ -113,7 +113,7 @@ class FirTypeResolverImpl(private val session: FirSession) : FirTypeResolver {
                 createFunctionalType(typeRef)
             }
             is FirImplicitBuiltinTypeRef -> {
-                resolveToSymbol(typeRef, scope)!!.constructType(emptyList(), isNullable = false, symbolOriginSession = session)
+                resolveToSymbol(typeRef, scope)!!.constructType(emptyList(), isNullable = false)
             }
             is FirDelegatedTypeRef -> {
                 resolveType(typeRef.typeRef, scope)
