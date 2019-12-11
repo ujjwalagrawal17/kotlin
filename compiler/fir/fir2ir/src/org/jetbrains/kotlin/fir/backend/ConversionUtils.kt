@@ -74,6 +74,7 @@ fun ConeKotlinType.toIrType(session: FirSession, declarationStorage: Fir2IrDecla
         }
         is ConeStubType -> createErrorType()
         is ConeIntegerLiteralType -> getApproximatedType().toIrType(session, declarationStorage, definitelyNotNull)
+        is ConeSimpleKotlinType -> createErrorType()
     }
 }
 

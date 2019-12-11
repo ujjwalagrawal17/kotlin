@@ -78,7 +78,7 @@ class ComponentArrayAccessor<T : FirSessionComponent>(val type: KClass<T>) : Rea
     val id: Int = type.componentId()
     override fun getValue(thisRef: FirSession, property: KProperty<*>): T {
         @Suppress("UNCHECKED_CAST")
-        return thisRef.componentArray.getOrNull(id) as? T ?: error("No '$type'($id) component in session: $thisRef")
+        return thisRef.componentArray[id] as T
     }
 }
 
