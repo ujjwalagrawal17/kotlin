@@ -402,8 +402,8 @@ fun <T> chooseContainerElement(
 
             override fun getElementText(element: PsiElement): String? {
                 val representativeElement = element.getRepresentativeElement()
-                return element.project.runReadActionInSmartMode { representativeElement.renderDeclaration() } ?: representativeElement
-                    .renderText()
+                return element.project.runReadActionInSmartMode { representativeElement.renderDeclaration() }
+                    ?: representativeElement.renderText()
             }
 
             override fun getContainerText(element: PsiElement, name: String?): String? = null
@@ -446,11 +446,8 @@ fun PsiElement.isTrueJavaMethod(): Boolean = this is PsiMethod && this !is KtLig
 fun PsiElement.canRefactor(): Boolean = when {
     !isValid -> false
     this is PsiPackage -> directories.any { it.canRefactor() }
-    this is KtElement || this is PsiMember && language == JavaLanguage.INSTANCE || this is PsiDirectory -> ProjectRootsUtil
-        .isInProjectSource(
-            this,
-            includeScriptsOutsideSourceRoots = true
-        )
+    this is KtElement || this is PsiMember && language == JavaLanguage.INSTANCE ||
+            this is PsiDirectory -> ProjectRootsUtil.isInProjectSource(this, includeScriptsOutsideSourceRoots = true)
     else -> false
 }
 

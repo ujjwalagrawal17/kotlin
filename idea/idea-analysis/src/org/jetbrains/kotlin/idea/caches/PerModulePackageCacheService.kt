@@ -69,8 +69,8 @@ class KotlinPackageContentModificationListener(private val project: Project) : D
                         .filter { (it.isValid || it !is VFileCreateEvent) && it.file != null }
                         .filter {
                             val vFile = it.file!!
-                            vFile.isDirectory || FileTypeRegistry.getInstance().getFileTypeByFileName(vFile.nameSequence) == KotlinFileType
-                                .INSTANCE
+                            vFile.isDirectory || FileTypeRegistry.getInstance()
+                                .getFileTypeByFileName(vFile.nameSequence) == KotlinFileType.INSTANCE
                         }
                         .filter {
                             when (val origin = it.requestor) {

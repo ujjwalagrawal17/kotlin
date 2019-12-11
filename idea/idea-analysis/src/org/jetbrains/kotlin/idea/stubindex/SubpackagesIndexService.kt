@@ -23,6 +23,7 @@ import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.util.containers.MultiMap
 import org.jetbrains.kotlin.idea.caches.trackers.KotlinCodeBlockModificationListener
+import org.jetbrains.kotlin.idea.util.runReadActionInSmartMode
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 import java.util.*
@@ -63,7 +64,9 @@ class SubpackagesIndexService(private val project: Project) {
             }
         }
 
-        fun packageExists(fqName: FqName): Boolean = fqName in allPackageFqNames || fqNameByPrefix.containsKey(fqName)
+        fun packageExists(fqName: FqName): Boolean = project.runReadActionInSmartMode {
+            fqName in allPackageFqNames || fqNameByPrefix.containsKey(fqName)
+        }
 
         fun getSubpackages(fqName: FqName, scope: GlobalSearchScope, nameFilter: (Name) -> Boolean): Collection<FqName> {
             val possibleFilesFqNames = fqNameByPrefix[fqName]

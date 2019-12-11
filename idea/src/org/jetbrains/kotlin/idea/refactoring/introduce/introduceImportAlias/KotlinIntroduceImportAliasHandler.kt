@@ -124,22 +124,22 @@ private fun invokeRename(
 }
 
 private fun replaceUsages(usages: List<UsageContext>, newName: String) {
-    usages.asReversed() // case: inner element
-        .forEach {
-            val reference = it.pointer.element?.safeAs<KtElement>()?.mainReference?.takeUnless(KtReference::isImportUsage) ?: return@forEach
-            val newExpression = reference.handleElementRename(newName) as KtNameReferenceExpression
-            if (it.isExtension) {
-                newExpression.getQualifiedElementSelector()?.replace(newExpression)
-                return@forEach
-            }
-
-            val qualifiedElement = newExpression.getQualifiedElement()
-            if (qualifiedElement != newExpression) {
-                val parent = newExpression.parent
-                if (parent is KtCallExpression || parent is KtUserType) {
-                    newExpression.siblings(forward = false, withItself = false).forEach(PsiElement::delete)
-                    qualifiedElement.replace(parent)
-                } else qualifiedElement.replace(newExpression)
-            }
+    // case: inner element
+    for (usage in usages.asReversed()) {
+        val reference = usage.pointer.element?.safeAs<KtElement>()?.mainReference?.takeUnless(KtReference::isImportUsage) ?: continue
+        val newExpression = reference.handleElementRename(newName) as KtNameReferenceExpression
+        if (usage.isExtension) {
+            newExpression.getQualifiedElementSelector()?.replace(newExpression)
+            continue
         }
+
+        val qualifiedElement = newExpression.getQualifiedElement()
+        if (qualifiedElement != newExpression) {
+            val parent = newExpression.parent
+            if (parent is KtCallExpression || parent is KtUserType) {
+                newExpression.siblings(forward = false, withItself = false).forEach(PsiElement::delete)
+                qualifiedElement.replace(parent)
+            } else qualifiedElement.replace(newExpression)
+        }
+    }
 }

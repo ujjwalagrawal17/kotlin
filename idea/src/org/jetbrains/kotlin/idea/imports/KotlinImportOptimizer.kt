@@ -199,12 +199,9 @@ class KotlinImportOptimizer : ImportOptimizer {
             val noImportsScope = resolutionScope.replaceImportingScopes(null)
 
             if (isInScope(noImportsScope)) return true
-            if (target !is ClassDescriptor) { // classes not accessible through receivers, only their constructors
-                if (resolutionScope.getImplicitReceiversHierarchy()
-                        .any { isInScope(it.type.memberScope.memberScopeAsImportingScope()) }
-                ) return true
-            }
-            return false
+            // classes not accessible through receivers, only their constructors
+            return if (target is ClassDescriptor) false
+            else resolutionScope.getImplicitReceiversHierarchy().any { isInScope(it.type.memberScope.memberScopeAsImportingScope()) }
         }
 
         private class AbstractReferenceImpl(private val reference: KtReference) : OptimizedImportsBuilder.AbstractReference {
@@ -215,8 +212,8 @@ class KotlinImportOptimizer : ImportOptimizer {
                 get() {
                     val resolvesByNames = reference.resolvesByNames
                     if (reference is KtInvokeFunctionReference) {
-                        val additionalNames = (reference.element.calleeExpression as? KtNameReferenceExpression)
-                            ?.mainReference?.resolvesByNames
+                        val additionalNames = (reference.element.calleeExpression as? KtNameReferenceExpression)?.mainReference
+                            ?.resolvesByNames
                         if (additionalNames != null) {
                             return resolvesByNames + additionalNames
                         }

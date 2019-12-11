@@ -173,7 +173,8 @@ class JavaToKotlinAction : AnAction() {
             var externalCodeUpdate: ((List<KtFile>) -> Unit)? = null
 
             val result = converterResult ?: return emptyList()
-            if (enableExternalCodeProcessing && result.externalCodeProcessing != null) {
+            val externalCodeProcessing = result.externalCodeProcessing
+            if (enableExternalCodeProcessing && externalCodeProcessing != null) {
                 val question =
                     "Some code in the rest of your project may require corrections after performing this conversion. Do you want to find such code and correct it too?"
                 if (!askExternalCodeProcessing || (Messages.showYesNoDialog(
@@ -186,7 +187,7 @@ class JavaToKotlinAction : AnAction() {
                     ProgressManager.getInstance().runProcessWithProgressSynchronously(
                         {
                             runReadAction {
-                                externalCodeUpdate = result.externalCodeProcessing!!.prepareWriteOperation(
+                                externalCodeUpdate = externalCodeProcessing.prepareWriteOperation(
                                     ProgressManager.getInstance().progressIndicator!!
                                 )
                             }

@@ -49,7 +49,6 @@ object PackageIndexUtil {
             searchScope: GlobalSearchScope,
             project: Project
     ): Boolean {
-
         val subpackagesIndex = SubpackagesIndexService.getInstance(project)
         if (!subpackagesIndex.packageExists(packageFqName)) {
             return false

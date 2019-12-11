@@ -159,7 +159,8 @@ class KotlinDebuggerCaches(project: Project) {
         }
 
         fun getOrCreateTypeMapper(psiElement: PsiElement): KotlinTypeMapper {
-            val cache = getInstance(runReadAction { psiElement.project })
+            val project = runReadAction { psiElement.project }
+            val cache = getInstance(project)
 
             val file = runReadAction { psiElement.containingFile as KtFile }
             val isInLibrary = runReadAction { LibraryUtil.findLibraryEntry(file.virtualFile, file.project) } != null
@@ -171,7 +172,7 @@ class KotlinDebuggerCaches(project: Project) {
             val cachedValue = typeMappersCache[key]
             if (cachedValue != null) return cachedValue
 
-            val newValue = runReadAction { file.project }.runReadActionInSmartMode {
+            val newValue = project.runReadActionInSmartMode {
                 if (!isInLibrary) {
                     createTypeMapperForSourceFile(file)
                 } else {
