@@ -29,17 +29,20 @@ import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 
+fun ConeClassLikeLookupTagImpl.bindSymbolToLookupTag(provider: FirSymbolProvider, symbol: FirClassLikeSymbol<*>?) {
+    boundSymbol = Pair(provider, symbol)
+}
+
 abstract class FirSymbolProvider : FirSessionComponent {
 
     abstract fun getClassLikeSymbolByFqName(classId: ClassId): FirClassLikeSymbol<*>?
 
     fun getSymbolByLookupTag(lookupTag: ConeClassLikeLookupTag): FirClassLikeSymbol<*>? {
         (lookupTag as? ConeClassLikeLookupTagImpl)
-            ?.boundSymbol?.takeIf { it.first === this }?.let { return it.second }
+            ?.boundSymbol?.let { return it.second }
 
         return getClassLikeSymbolByFqName(lookupTag.classId).also {
-            (lookupTag as? ConeClassLikeLookupTagImpl)
-                ?.boundSymbol = Pair(this, it)
+            (lookupTag as? ConeClassLikeLookupTagImpl)?.bindSymbolToLookupTag(this, it)
         }
     }
 
