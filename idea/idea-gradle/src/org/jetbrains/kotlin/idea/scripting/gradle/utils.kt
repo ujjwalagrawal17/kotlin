@@ -5,21 +5,38 @@
 
 package org.jetbrains.kotlin.idea.scripting.gradle
 
+import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.registry.Registry
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.*
 import com.intellij.psi.impl.source.tree.LeafPsiElement
+import com.intellij.util.io.systemIndependentPath
 import org.gradle.util.GradleVersion
 import org.jetbrains.kotlin.idea.util.application.runReadAction
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtScriptInitializer
 import org.jetbrains.kotlin.psi.psiUtil.getChildrenOfType
+import org.jetbrains.plugins.gradle.GradleManager
+import org.jetbrains.plugins.gradle.settings.GradleProjectSettings
+import org.jetbrains.plugins.gradle.util.GradleConstants
 
 private val sections = arrayListOf("buildscript", "plugins", "initscript", "pluginManagement")
 
 fun isGradleKotlinScript(virtualFile: VirtualFile) = virtualFile.name.endsWith(".gradle.kts")
+
+fun isLinkedWithGradleProject(project: Project, file: VirtualFile): Boolean {
+    val gradleSettings = ExternalSystemApiUtil.getSettings(project, GradleConstants.SYSTEM_ID)
+    if (gradleSettings.getLinkedProjectsSettings().isEmpty()) return false
+
+    val projectSettings = gradleSettings.getLinkedProjectsSettings().filterIsInstance<GradleProjectSettings>().firstOrNull()
+        ?: return false
+
+    val affectedFiles = ExternalSystemApiUtil.getAllManagers().filterIsInstance<GradleManager>().firstOrNull()
+        ?.getAffectedExternalProjectFiles(projectSettings.externalProjectPath, project)
+    return affectedFiles?.any { it.toPath().systemIndependentPath == file.path } == true
+}
 
 fun getGradleScriptInputsStamp(
     project: Project,
@@ -55,7 +72,7 @@ fun getGradleScriptInputsStamp(
                     }
                 }
 
-            GradleKotlinScriptConfigurationInputs(result.toString())
+            GradleKotlinScriptConfigurationInputs(result.toString(), file.timeStamp)
         } else null
     }
 }

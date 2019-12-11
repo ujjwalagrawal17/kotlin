@@ -5,6 +5,7 @@
 
 package org.jetbrains.kotlin.idea.scripting.gradle
 
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
@@ -37,16 +38,22 @@ class GradleScriptConfigurationLoader(project: Project) : DefaultScriptConfigura
             // todo: use default configuration loader for out-of-project scripts?
 
             return true
-        } else {
-            // Gradle read files from FS
-            GlobalScope.launch(EDT(project)) {
-                runWriteAction {
-                    FileDocumentManager.getInstance().saveAllDocuments()
-                }
-            }
-
-            return super.loadDependencies(isFirstLoad, ktFile, scriptDefinition, context)
         }
+
+        // todo: provide special loader in tests to avoid isUnitTestMode usage
+        if (!isLinkedWithGradleProject(ktFile.project, ktFile.originalFile.virtualFile) && !ApplicationManager.getApplication().isUnitTestMode) {
+            // todo: provide an action to load configuration through scripting API: KT-34625
+            return true
+        }
+
+        // Gradle read files from FS
+        GlobalScope.launch(EDT(project)) {
+            runWriteAction {
+                FileDocumentManager.getInstance().saveAllDocuments()
+            }
+        }
+
+        return super.loadDependencies(isFirstLoad, ktFile, scriptDefinition, context)
     }
 
     override fun getInputsStamp(virtualFile: VirtualFile, file: KtFile): CachedConfigurationInputs {

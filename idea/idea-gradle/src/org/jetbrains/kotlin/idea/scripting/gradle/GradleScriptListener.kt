@@ -6,16 +6,10 @@
 package org.jetbrains.kotlin.idea.scripting.gradle
 
 import com.intellij.openapi.components.service
-import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.util.io.systemIndependentPath
-import org.jetbrains.kotlin.idea.core.script.configuration.cache.ScriptConfigurationCacheScope
 import org.jetbrains.kotlin.idea.core.script.configuration.listener.ScriptChangeListener
 import org.jetbrains.kotlin.idea.core.script.configuration.listener.ScriptConfigurationUpdater
-import org.jetbrains.plugins.gradle.GradleManager
-import org.jetbrains.plugins.gradle.settings.GradleProjectSettings
-import org.jetbrains.plugins.gradle.util.GradleConstants
 
 internal open class GradleScriptListener(project: Project) : ScriptChangeListener(project) {
 
@@ -40,14 +34,6 @@ internal open class GradleScriptListener(project: Project) : ScriptChangeListene
     }
 
     override fun isApplicable(vFile: VirtualFile): Boolean {
-        val gradleSettings = ExternalSystemApiUtil.getSettings(project, GradleConstants.SYSTEM_ID)
-        if (gradleSettings.getLinkedProjectsSettings().isEmpty()) return false
-
-        val projectSettings = gradleSettings.getLinkedProjectsSettings().filterIsInstance<GradleProjectSettings>().firstOrNull()
-            ?: return false
-
-        val affectedFiles = ExternalSystemApiUtil.getAllManagers().filterIsInstance<GradleManager>().firstOrNull()
-            ?.getAffectedExternalProjectFiles(projectSettings.externalProjectPath, project)
-        return affectedFiles?.any { it.toPath().systemIndependentPath == vFile.path } == true
+        return isLinkedWithGradleProject(project, vFile)
     }
 }
