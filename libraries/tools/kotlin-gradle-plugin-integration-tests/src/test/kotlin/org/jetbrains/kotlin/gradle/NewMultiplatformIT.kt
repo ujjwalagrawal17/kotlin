@@ -981,11 +981,6 @@ class NewMultiplatformIT : BaseGradleIT() {
         }
     }
 
-    @Test
-    fun testNativeBinaryKotlinDSL() = doTestNativeBinaryDSL("kotlin-dsl")
-
-    @Test
-    fun testNativeBinaryGroovyDSL() = doTestNativeBinaryDSL("groovy-dsl")
 
     private fun CompiledProject.checkNativeCommandLineFor(vararg taskPaths: String, check: (String) -> Unit) = taskPaths.forEach { taskPath ->
         val commandLine = output.lineSequence().dropWhile {
@@ -996,10 +991,8 @@ class NewMultiplatformIT : BaseGradleIT() {
         check(commandLine)
     }
 
-    private fun doTestNativeBinaryDSL(
-        projectName: String,
-        gradleVersionRequired: GradleVersionRequired = gradleVersion
-    ) = with(transformProjectWithPluginsDsl(projectName, gradleVersionRequired, "new-mpp-native-binaries")) {
+    @Test
+    fun testNativeBinaries() = with(transformProjectWithPluginsDsl("new-mpp-native-binaries", gradleVersion)) {
 
         val hostSuffix = nativeHostTargetName.capitalize()
         val binaries = mutableListOf(
