@@ -5,11 +5,7 @@
 
 package org.jetbrains.kotlin.backend.common.ir
 
-import org.jetbrains.kotlin.descriptors.DeclarationDescriptor
-import org.jetbrains.kotlin.descriptors.MemberDescriptor
 import org.jetbrains.kotlin.ir.declarations.*
-import org.jetbrains.kotlin.resolve.descriptorUtil.module
-import org.jetbrains.kotlin.resolve.multiplatform.ExpectedActualResolver
 
 val IrDeclaration.isExpect
     get() = this is IrClass && isExpect ||

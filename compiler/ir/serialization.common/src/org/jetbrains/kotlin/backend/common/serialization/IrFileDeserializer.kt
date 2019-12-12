@@ -908,7 +908,6 @@ abstract class IrFileDeserializer(
         )
         result.annotations.addAll(deserializeAnnotations(proto.annotationList))
         result.parent = parentsStack.peek()!!
-
         return result
     }
 

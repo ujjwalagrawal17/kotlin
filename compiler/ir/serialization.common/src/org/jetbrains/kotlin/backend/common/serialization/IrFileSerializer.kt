@@ -16,7 +16,6 @@ import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.symbols.*
 import org.jetbrains.kotlin.ir.types.*
-import org.jetbrains.kotlin.ir.util.file
 import org.jetbrains.kotlin.ir.util.findTopLevelDeclaration
 import org.jetbrains.kotlin.ir.util.lineStartOffsets
 import org.jetbrains.kotlin.ir.util.module
@@ -254,7 +253,6 @@ open class IrFileSerializer(
         else ->
             TODO("Unexpected symbol kind: $symbol")
     }
-
 
     private fun serializeIrSymbolData(symbol: IrSymbol): ProtoSymbolData {
 
