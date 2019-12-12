@@ -8,38 +8,20 @@ public interface ActualOrBuilder extends
     org.jetbrains.kotlin.protobuf.MessageLiteOrBuilder {
 
   /**
-   * <code>required int64 actual = 1;</code>
-   */
-  boolean hasActual();
-  /**
-   * <code>required int64 actual = 1;</code>
-   */
-  long getActual();
-
-  /**
-   * <code>required int64 expect = 2;</code>
-   */
-  boolean hasExpect();
-  /**
-   * <code>required int64 expect = 2;</code>
-   */
-  long getExpect();
-
-  /**
-   * <code>required int32 actual_symbol = 3;</code>
+   * <code>required int32 actual_symbol = 1;</code>
    */
   boolean hasActualSymbol();
   /**
-   * <code>required int32 actual_symbol = 3;</code>
+   * <code>required int32 actual_symbol = 1;</code>
    */
   int getActualSymbol();
 
   /**
-   * <code>required int32 expect_symbol = 4;</code>
+   * <code>required int32 expect_symbol = 2;</code>
    */
   boolean hasExpectSymbol();
   /**
-   * <code>required int32 expect_symbol = 4;</code>
+   * <code>required int32 expect_symbol = 2;</code>
    */
   int getExpectSymbol();
 }

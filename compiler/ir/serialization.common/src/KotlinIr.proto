@@ -115,10 +115,8 @@ message IrSymbolData {
 }
 
 message Actual {
-    required int64 actual = 1;
-    required int64 expect = 2;
-    required int32 actual_symbol = 3;
-    required int32 expect_symbol = 4;
+    required int32 actual_symbol = 1;
+    required int32 expect_symbol = 2;
 }
 
 /* ------ IrTypes --------------------------------------------- */

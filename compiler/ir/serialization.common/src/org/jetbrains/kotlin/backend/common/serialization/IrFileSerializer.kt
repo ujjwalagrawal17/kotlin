@@ -1363,8 +1363,6 @@ open class IrFileSerializer(
 
             proto.addActuals(
                 ProtoActual.newBuilder()
-                    .setExpect(expectIndex)
-                    .setActual(actualIndex)
                     .setExpectSymbol(serializeIrSymbol(expectSymbol))
                     .setActualSymbol(serializeIrSymbol(actualSymbol))
                     .build()

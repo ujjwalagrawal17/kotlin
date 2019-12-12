@@ -41,7 +41,6 @@ import org.jetbrains.kotlin.backend.common.serialization.proto.IrType as ProtoTy
 import org.jetbrains.kotlin.backend.common.serialization.proto.IrStatement as ProtoStatement
 import org.jetbrains.kotlin.backend.common.serialization.proto.IrExpression as ProtoExpression
 import org.jetbrains.kotlin.backend.common.serialization.proto.IrConstructorCall as ProtoConstructorCall
-import org.jetbrains.kotlin.backend.common.serialization.proto.ExpectActualTable as ProtoExpectActualTable
 import org.jetbrains.kotlin.backend.common.serialization.proto.Actual as ProtoActual
 
 abstract class KotlinIrLinker(
@@ -50,7 +49,8 @@ abstract class KotlinIrLinker(
     val symbolTable: SymbolTable,
     private val exportedDependencies: List<ModuleDescriptor>,
     private val forwardModuleDescriptor: ModuleDescriptor?,
-    mangler: KotlinMangler
+    mangler: KotlinMangler,
+    val klibMpp: Boolean
 ) : DescriptorUniqIdAware, IrDeserializer {
 
     val expectUniqIdToActualProto =
@@ -135,11 +135,14 @@ abstract class KotlinIrLinker(
         private val moduleDeserializationState = DeserializationState.ModuleDeserializationState(this)
         val moduleReversedFileIndex = mutableMapOf<UniqId, IrDeserializerForFile>()
         private val moduleDependencies by lazy {
-            // TODO: Substituting actual instead on expect creates use links going against library dependency dag.
-            // So instead of something like
-            // moduleDescriptor.allDependencyModules.filter { it != moduleDescriptor }.map { deserializersForModules[it]!! }
-            // we just search in all deserializers:
-            deserializersForModules.values.minus(this)
+            // TODO: Substituting actual instead on expect creates symbol links going against library dependency dag.
+            // That requires some redesign and rework on combining SCC of symbol references to a single logical module.
+            // For now we just search in all deserializers.
+            if (klibMpp) {
+                deserializersForModules.values.minus(this)
+            } else {
+                moduleDescriptor.allDependencyModules.filter { it != moduleDescriptor }.map { deserializersForModules[it]!! }
+            }
         }
 
         // This is a heavy initializer
@@ -172,12 +175,14 @@ abstract class KotlinIrLinker(
 
             fun deserializeExpectActualMapping() {
                 actuals.forEach {
-                    val expect = UniqId(it.expect)
-                    val actual = UniqId(it.actual)
+                    val expectSymbol = loadSymbolProto(it.expectSymbol)
+                    val actualSymbol = loadSymbolProto(it.actualSymbol)
+                    val expect = UniqId(expectSymbol.uniqIdIndex)
+                    val actual = UniqId(actualSymbol.uniqIdIndex)
                     assert(expectUniqIdToActualProto[expect] == null) {
                         "Expect uniqid ${expect.index} is already actualized by ${expectUniqIdToActualProto[expect]?.second?.uniqIdIndex}, while we try to record ${actual.index}"
                     }
-                    expectUniqIdToActualProto.put(expect, this to loadSymbolProto(it.actualSymbol))
+                    expectUniqIdToActualProto.put(expect, this to actualSymbol)
                 }
             }
 

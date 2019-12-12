@@ -78,7 +78,7 @@ val emptyLoggingContext = object : LoggingContext {
 private val CompilerConfiguration.metadataVersion
     get() = get(CommonConfigurationKeys.METADATA_VERSION) as? KlibMetadataVersion ?: KlibMetadataVersion.INSTANCE
 
-private val CompilerConfiguration.mppKlibs: Boolean
+private val CompilerConfiguration.klibMpp: Boolean
     get() = get(CommonConfigurationKeys.KLIB_MPP) ?: false
 
 class KotlinFileSerializedData(val metadata: ByteArray, val irData: SerializedIrFile)
@@ -182,7 +182,7 @@ fun loadIr(
     val symbolTable = psi2IrContext.symbolTable
     val moduleDescriptor = psi2IrContext.moduleDescriptor
 
-    val deserializer = JsIrLinker(moduleDescriptor, JsMangler, emptyLoggingContext, irBuiltIns, symbolTable)
+    val deserializer = JsIrLinker(moduleDescriptor, JsMangler, emptyLoggingContext, irBuiltIns, symbolTable, klibMpp = configuration.klibMpp)
 
     val deserializedModuleFragments = sortDependencies(allDependencies.getFullList(), depsDescriptors.descriptors).map {
         deserializer.deserializeIrModuleHeader(depsDescriptors.getModuleDescriptor(it))!!
@@ -362,7 +362,7 @@ fun serializeModuleIntoKlib(
 
     val descriptorTable = DescriptorTable()
     val serializedIr =
-        JsIrModuleSerializer(emptyLoggingContext, moduleFragment.irBuiltins, descriptorTable, skipExpects = !configuration.mppKlibs, expectDescriptorToSymbol = expectDescriptorToSymbol).serializedIrModule(moduleFragment)
+        JsIrModuleSerializer(emptyLoggingContext, moduleFragment.irBuiltins, descriptorTable, skipExpects = !configuration.klibMpp, expectDescriptorToSymbol = expectDescriptorToSymbol).serializedIrModule(moduleFragment)
 
     val moduleDescriptor = moduleFragment.descriptor
 
@@ -374,7 +374,7 @@ fun serializeModuleIntoKlib(
         metadataVersion,
         moduleDescriptor,
         descriptorTable,
-        skipExpects = !configuration.mppKlibs
+        skipExpects = !configuration.klibMpp
     )
 
     fun serializeScope(fqName: FqName, memberScope: Collection<DeclarationDescriptor>): ByteArray {

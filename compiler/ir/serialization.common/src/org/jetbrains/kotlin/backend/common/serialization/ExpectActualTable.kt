@@ -17,31 +17,46 @@ class ExpectActualTable(val expectDescriptorToSymbol: MutableMap<DeclarationDesc
 
     private fun IrElement.recordActuals(rightHandSide: Map<DeclarationDescriptor, IrSymbol>, inModule: ModuleDescriptor) {
         this.acceptVoid(object : IrElementVisitorVoid {
+
+            private fun recordDeclarationActuals(declaration: IrDeclaration) {
+
+                expectDescriptorToSymbol.put(declaration.descriptor, (declaration as IrSymbolOwner).symbol)
+
+                declaration.descriptor.findActuals(inModule).forEach {
+                    val realActual = if (it is TypeAliasDescriptor)
+                        it.expandedType.constructor.declarationDescriptor as? ClassDescriptor
+                            ?: error("Unexpected actual typealias right hand side: $it")
+                    else it
+
+                    // TODO: what to do with fake overrides???
+                    if (!(realActual is CallableMemberDescriptor && realActual.kind == CallableMemberDescriptor.Kind.FAKE_OVERRIDE)) {
+                        table.put(
+                            declaration.descriptor, rightHandSide[realActual]
+                                ?: error("Could not find actual type alias target member for: ${declaration.descriptor} -> $it")
+                        )
+                    }
+                }
+            }
+
             override fun visitElement(element: IrElement) {
                 element.acceptChildrenVoid(this)
             }
 
-            override fun visitDeclaration(declaration: IrDeclaration) {
-                if (declaration is IrFunction || declaration is IrClass || declaration is IrProperty || declaration is IrEnumEntry) {
-
-                    expectDescriptorToSymbol.put(declaration.descriptor, (declaration as IrSymbolOwner).symbol)
-
-                    declaration.descriptor.findActuals(inModule).forEach {
-                        val realActual = if (it is TypeAliasDescriptor)
-                            it.expandedType.constructor.declarationDescriptor as? ClassDescriptor
-                                ?: error("Unexpected actual typealias right hand side: $it")
-                        else it
-
-                        // TODO: what to do with fake overrides???
-                        if (!(realActual is CallableMemberDescriptor && realActual.kind == CallableMemberDescriptor.Kind.FAKE_OVERRIDE)) {
-                            table.put(
-                                declaration.descriptor, rightHandSide[realActual]
-                                    ?: error("Could not find actual type alias target member for: ${declaration.descriptor} -> $it")
-                            )
-                        }
-                    }
-                }
-                super.visitDeclaration(declaration)
+            override fun visitFunction(declaration: IrFunction) {
+                recordDeclarationActuals(declaration)
+                super.visitFunction(declaration)
+            }
+            override fun visitClass(declaration: IrClass) {
+                recordDeclarationActuals(declaration)
+                super.visitClass(declaration)
+            }
+            override fun visitProperty(declaration: IrProperty) {
+                recordDeclarationActuals(declaration)
+                super.visitProperty(declaration)
+            }
+            override fun visitEnumEntry(declaration: IrEnumEntry) {
+                recordDeclarationActuals(declaration)
+                super.visitEnumEntry(declaration)
             }
         })
     }
@@ -53,12 +68,21 @@ class ExpectActualTable(val expectDescriptorToSymbol: MutableMap<DeclarationDesc
             override fun visitElement(element: IrElement) {
                 element.acceptChildrenVoid(this)
             }
-
-            override fun visitDeclaration(declaration: IrDeclaration) {
-                if (declaration is IrFunction || declaration is IrClass || declaration is IrProperty || declaration is IrEnumEntry) {
-                    rightHandSide.put(declaration.descriptor, (declaration as IrSymbolOwner).symbol)
-                }
-                super.visitDeclaration(declaration)
+            override fun visitFunction(declaration: IrFunction) {
+                rightHandSide.put(declaration.descriptor, declaration.symbol)
+                super.visitFunction(declaration)
+            }
+            override fun visitClass(declaration: IrClass) {
+                rightHandSide.put(declaration.descriptor, declaration.symbol)
+                super.visitClass(declaration)
+            }
+            override fun visitProperty(declaration: IrProperty) {
+                rightHandSide.put(declaration.descriptor, declaration.symbol)
+                super.visitProperty(declaration)
+            }
+            override fun visitEnumEntry(declaration: IrEnumEntry) {
+                rightHandSide.put(declaration.descriptor, declaration.symbol)
+                super.visitEnumEntry(declaration)
             }
         })
         return rightHandSide

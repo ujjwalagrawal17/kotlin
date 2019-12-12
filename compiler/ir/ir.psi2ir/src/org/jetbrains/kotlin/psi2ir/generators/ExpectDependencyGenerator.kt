@@ -9,13 +9,12 @@ import org.jetbrains.kotlin.ir.util.SymbolTable
 import org.jetbrains.kotlin.ir.visitors.IrElementVisitorVoid
 import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
 import org.jetbrains.kotlin.ir.visitors.acceptVoid
-import org.jetbrains.kotlin.resolve.descriptorUtil.module
 import org.jetbrains.kotlin.resolve.multiplatform.findExpects
 
 // Need to create unbound symbols for expects corresponding to actuals of the currently compiled module.
 // This is neccessary because there is no explicit links between expects and actuals
 // neither in descriptors nor in IR.
-fun referenceExpectsForUsedActuals(expectDescriptroToSymbol: MutableMap<DeclarationDescriptor, IrSymbol>, symbolTable: SymbolTable, irModule: IrModuleFragment) {
+fun referenceExpectsForUsedActuals(expectDescriptorToSymbol: MutableMap<DeclarationDescriptor, IrSymbol>, symbolTable: SymbolTable, irModule: IrModuleFragment) {
     irModule.acceptVoid(object : IrElementVisitorVoid {
 
         private fun <T> T.forEachExpect(body: (DeclarationDescriptor) -> Unit) where T: IrDeclaration {
@@ -30,9 +29,9 @@ fun referenceExpectsForUsedActuals(expectDescriptroToSymbol: MutableMap<Declarat
         override fun visitClass(declaration: IrClass) {
             declaration.forEachExpect {
                 val symbol = symbolTable.referenceClass(it as ClassDescriptor)
-                expectDescriptroToSymbol.put(it, symbol);
+                expectDescriptorToSymbol.put(it, symbol);
                 it.constructors.forEach {
-                    expectDescriptroToSymbol.put(it, symbolTable.referenceConstructor(it as ClassConstructorDescriptor))
+                    expectDescriptorToSymbol.put(it, symbolTable.referenceConstructor(it as ClassConstructorDescriptor))
                 }
             }
             super.visitDeclaration(declaration)
@@ -40,14 +39,14 @@ fun referenceExpectsForUsedActuals(expectDescriptroToSymbol: MutableMap<Declarat
         override fun visitSimpleFunction(declaration: IrSimpleFunction) {
             declaration.forEachExpect {
                 val symbol = symbolTable.referenceSimpleFunction(it as FunctionDescriptor);
-                expectDescriptroToSymbol.put(it, symbol);
+                expectDescriptorToSymbol.put(it, symbol);
             }
             super.visitDeclaration(declaration)
         }
         override fun visitConstructor(declaration: IrConstructor) {
             declaration.forEachExpect {
                 val symbol = symbolTable.referenceConstructor(it as ClassConstructorDescriptor)
-                expectDescriptroToSymbol.put(it, symbol);
+                expectDescriptorToSymbol.put(it, symbol);
             
             }
             super.visitDeclaration(declaration)
@@ -55,14 +54,14 @@ fun referenceExpectsForUsedActuals(expectDescriptroToSymbol: MutableMap<Declarat
         override fun visitProperty(declaration: IrProperty) {
             declaration.forEachExpect {
                 val symbol = symbolTable.referenceProperty(it as PropertyDescriptor)
-                expectDescriptroToSymbol.put(it, symbol);
+                expectDescriptorToSymbol.put(it, symbol);
             }
             super.visitDeclaration(declaration)
         }
         override fun visitEnumEntry(declaration: IrEnumEntry) {
             declaration.forEachExpect {
                 val symbol = symbolTable.referenceEnumEntry(it as ClassDescriptor)
-                expectDescriptroToSymbol.put(it, symbol);
+                expectDescriptorToSymbol.put(it, symbol);
 
             }
             super.visitDeclaration(declaration)
@@ -78,7 +77,7 @@ fun referenceExpectsForUsedActuals(expectDescriptroToSymbol: MutableMap<Declarat
                     is ClassDescriptor -> symbolTable.referenceClass(it)
                     else -> error("Unexpected expect for actual type alias: $it")
                 }
-                expectDescriptroToSymbol.put(it, symbol);
+                expectDescriptorToSymbol.put(it, symbol);
 
             }
             super.visitDeclaration(declaration)
