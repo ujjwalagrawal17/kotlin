@@ -7,16 +7,19 @@ package org.jetbrains.kotlin.fir.scopes.impl
 
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.resolve.FirSymbolProvider
+import org.jetbrains.kotlin.fir.resolve.firSymbolProvider
 import org.jetbrains.kotlin.fir.resolve.impl.FirCompositeSymbolProvider
 import org.jetbrains.kotlin.fir.resolve.impl.FirDependenciesSymbolProviderImpl
 import org.jetbrains.kotlin.fir.scopes.FirScope
 
-abstract class FirAbstractProviderBasedScope(val session: FirSession, lookupInFir: Boolean = true) :
+abstract class FirAbstractProviderBasedScope(val session: FirSession, lookupInFir_: Boolean = true) :
     FirScope() {
-    val provider = when (val symbolProvider = FirSymbolProvider.getInstance(session)) {
+    val lookupInFir = true
+
+    val provider = session.firSymbolProvider/*when (val symbolProvider = FirSymbolProvider.getInstance(session)) {
         is FirCompositeSymbolProvider -> symbolProvider.takeIf { !lookupInFir }?.providers?.find {
             it is FirDependenciesSymbolProviderImpl
         } ?: symbolProvider
         else -> symbolProvider
-    }
+    }*/
 }

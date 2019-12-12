@@ -15,7 +15,7 @@ class FirDefaultStarImportingScope(
     session: FirSession,
     scopeSession: ScopeSession,
     priority: DefaultImportPriority,
-    lookupInFir: Boolean = false
+    lookupInFir: Boolean = true
 ) : FirAbstractStarImportingScope(session, scopeSession, lookupInFir) {
 
     // TODO: put languageVersionSettings into FirSession?
