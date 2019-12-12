@@ -6,7 +6,7 @@
 package org.jetbrains.kotlin.idea.debugger.coroutines.proxy
 
 import com.sun.jdi.*
-import org.jetbrains.kotlin.idea.debugger.coroutines.data.CoroutineState
+import org.jetbrains.kotlin.idea.debugger.coroutines.data.CoroutineInfoData
 import org.jetbrains.kotlin.idea.debugger.evaluate.ExecutionContext
 import org.jetbrains.kotlin.idea.debugger.isSubtype
 
@@ -35,11 +35,11 @@ class LookupContinuation(val context: ExecutionContext, val frame: StackTraceEle
      * Gets current CoroutineInfo.lastObservedFrame and finds next frames in it until null or needed stackTraceElement is found
      * @return null if matching continuation is not found or is not BaseContinuationImpl
      */
-    fun findContinuation(state: CoroutineState): ObjectReference? {
+    fun findContinuation(infoData: CoroutineInfoData): ObjectReference? {
         if (!isApplicable())
             return null
 
-        var continuation = state.frame ?: return null
+        var continuation = infoData.frame ?: return null
         val baseType = "kotlin.coroutines.jvm.internal.BaseContinuationImpl"
         val getTrace = (continuation.type() as ClassType).concreteMethodByName(
             "getStackTraceElement",

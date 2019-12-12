@@ -19,7 +19,7 @@ import org.jetbrains.kotlin.idea.debugger.coroutines.command.CoroutineBuildCreat
 import org.jetbrains.kotlin.idea.debugger.coroutines.command.CoroutineBuildFrameCommand
 import org.jetbrains.kotlin.idea.debugger.coroutines.command.RefreshCoroutinesTreeCommand
 import org.jetbrains.kotlin.idea.debugger.coroutines.data.CoroutineDescriptorImpl
-import org.jetbrains.kotlin.idea.debugger.coroutines.data.CoroutineState
+import org.jetbrains.kotlin.idea.debugger.coroutines.data.CoroutineInfoData
 import org.jetbrains.kotlin.idea.debugger.coroutines.data.CreationFramesDescriptor
 import org.jetbrains.kotlin.idea.debugger.coroutines.util.logger
 import java.util.*
@@ -69,9 +69,9 @@ class CoroutinesDebuggerTree(project: Project) : ThreadsDebuggerTree(project) {
     }
 }
 
-class CoroutineInfoCache(val cache: MutableList<CoroutineState> = mutableListOf(), var state: CacheState = CacheState.INIT
+class CoroutineInfoCache(val cache: MutableList<CoroutineInfoData> = mutableListOf(), var state: CacheState = CacheState.INIT
 ) {
-    fun ok(infoList: List<CoroutineState>) {
+    fun ok(infoList: List<CoroutineInfoData>) {
         cache.clear()
         cache.addAll(infoList)
         state = CacheState.OK

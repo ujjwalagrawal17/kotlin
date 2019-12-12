@@ -3,7 +3,7 @@
  * Use of this source code is governed by the Apache 2.0 license that can be found in the license/LICENSE.txt file.
  */
 
-package org.jetbrains.kotlin.idea.debugger
+package org.jetbrains.kotlin.idea.debugger.coroutines
 
 import com.intellij.debugger.DebuggerContext
 import com.intellij.debugger.engine.JavaValue
@@ -16,13 +16,18 @@ import com.intellij.xdebugger.frame.XNamedValue
 import org.jetbrains.kotlin.idea.debugger.evaluate.ExecutionContext
 import com.sun.jdi.*
 import org.jetbrains.kotlin.codegen.coroutines.CONTINUATION_VARIABLE_NAME
+import org.jetbrains.kotlin.idea.debugger.SUSPEND_LAMBDA_CLASSES
 import org.jetbrains.kotlin.idea.debugger.coroutines.util.logger
+import org.jetbrains.kotlin.idea.debugger.isSubtype
+import org.jetbrains.kotlin.idea.debugger.safeVisibleVariableByName
 
 class AsyncStackTraceContext(
     val context: ExecutionContext,
     val method: Method) {
     val log by logger
-    val debugMetadataKtType = context.findClassSafe(DEBUG_METADATA_KT)!!
+    val debugMetadataKtType = context.findClassSafe(
+        DEBUG_METADATA_KT
+    )!!
 
     private companion object {
         const val DEBUG_METADATA_KT = "kotlin.coroutines.jvm.internal.DebugMetadataKt"

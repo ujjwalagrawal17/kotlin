@@ -6,19 +6,26 @@
 package org.jetbrains.kotlin.idea.debugger.coroutines.data
 
 import com.sun.jdi.*
+import org.jetbrains.kotlin.idea.debugger.coroutines.command.CoroutineStackFrameItem
 
 /**
  * Represents state of a coroutine.
  * @see `kotlinx.coroutines.debug.CoroutineInfo`
  */
-class CoroutineState(
+data class CoroutineInfoData(
     val name: String,
     val state: State,
-    val thread: ThreadReference? = null,
+    val threadName: String,
+    val threadStatus: Int,
+
     val stackTrace: List<StackTraceElement>,
-    val creationStackTrace: List<StackTraceElement>,
+    // links to jdi.* references
+    val thread: ThreadReference? = null, // for suspended coroutines should be null
     val frame: ObjectReference?
 ) {
+    var stackFrameList = mutableListOf<CoroutineStackFrameItem>()
+
+    // @TODO for refactoring/removal
     val stringStackTrace: String by lazy {
         buildString {
             appendln("\"$name\", state: $state")

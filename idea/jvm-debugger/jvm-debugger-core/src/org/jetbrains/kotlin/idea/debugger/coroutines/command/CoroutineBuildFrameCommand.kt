@@ -14,9 +14,10 @@ import com.intellij.debugger.jdi.StackFrameProxyImpl
 import com.intellij.debugger.jdi.ThreadReferenceProxyImpl
 import com.intellij.debugger.memory.utils.StackFrameItem
 import com.intellij.debugger.ui.impl.watch.*
-import org.jetbrains.kotlin.idea.debugger.KotlinCoroutinesAsyncStackTraceProvider
+import org.jetbrains.kotlin.idea.debugger.coroutines.CoroutineAsyncStackTraceProvider
 import org.jetbrains.kotlin.idea.debugger.coroutines.data.*
 
+@Deprecated("Moved to XCoroutineView")
 class CoroutineBuildFrameCommand(
     node: DebuggerTreeNodeImpl,
     val descriptor: CoroutineDescriptorImpl,
@@ -32,11 +33,11 @@ class CoroutineBuildFrameCommand(
         val debugProcess = debuggerContext.debugProcess ?: return
         val evalContext = debuggerContext.createEvaluationContext() ?: return
 
-        when (descriptor.state.state) {
-            CoroutineState.State.RUNNING -> {
+        when (descriptor.infoData.state) {
+            CoroutineInfoData.State.RUNNING -> {
                 if (renderRunningCoroutine(debugProcess, evalContext)) return
             }
-            CoroutineState.State.SUSPENDED, CoroutineState.State.CREATED -> {
+            CoroutineInfoData.State.SUSPENDED, CoroutineInfoData.State.CREATED -> {
                 if (renderSuspendedCoroutine(evalContext)) return
             }
         }
@@ -47,7 +48,7 @@ class CoroutineBuildFrameCommand(
     private fun createCreationStackTraceDescriptor(evalContext: EvaluationContextImpl) {
         val threadProxy = debuggerContext.suspendContext?.thread ?: return
         val proxy = threadProxy.forceFrames().first()
-        val trace = descriptor.state.stackTrace
+        val trace = descriptor.infoData.stackTrace
         val index = trace.indexOfFirst { it.className.startsWith(creationStackTraceSeparator) }
         val creationNode = myNodeManager.createNode(
             CreationFramesDescriptor(trace.subList(index + 1, trace.size)), evalContext)
@@ -63,7 +64,7 @@ class CoroutineBuildFrameCommand(
         val threadProxy = debuggerContext.suspendContext?.thread ?: return true
         val proxy = threadProxy.forceFrames().first()
         // the thread is paused on breakpoint - it has at least one frame
-        for (it in descriptor.state.stackTrace) {
+        for (it in descriptor.infoData.stackTrace) {
             if (it.className.startsWith(creationStackTraceSeparator)) break
             myChildren.add(createCoroutineFrameDescriptor(evalContext, it, proxy))
         }
@@ -79,7 +80,7 @@ class CoroutineBuildFrameCommand(
         return myNodeManager.createNode(
             myNodeManager.getDescriptor(
                 parent,
-                CoroutineStackTraceData(descriptor.state, proxy, evalContext, frame)
+                CoroutineStackTraceData(descriptor.infoData, proxy, evalContext, frame)
             ), evalContext
         )
     }
@@ -88,13 +89,13 @@ class CoroutineBuildFrameCommand(
         debugProcess: DebugProcessImpl,
         evalContext: EvaluationContextImpl
     ): Boolean {
-        if (descriptor.state.thread == null) {
+        if (descriptor.infoData.thread == null) {
             myChildren.add(myNodeManager.createMessageNode("Frames are not available"))
             return true
         }
         val proxy = ThreadReferenceProxyImpl(
             debugProcess.virtualMachineProxy,
-            descriptor.state.thread
+            descriptor.infoData.thread
         )
         val frames = proxy.forceFrames()
         var endRange = findResumeWithMethodFrameIndex(frames)
@@ -102,7 +103,7 @@ class CoroutineBuildFrameCommand(
         for (frame in 0..frames.lastIndex) {
             if (frame == endRange) {
                 val javaStackFrame = JavaStackFrame(StackFrameDescriptorImpl(frames[endRange - 1], MethodsTracker()), true)
-                val async = KotlinCoroutinesAsyncStackTraceProvider()
+                val async = CoroutineAsyncStackTraceProvider()
                     .getAsyncStackTrace(javaStackFrame, evalContext.suspendContext)
                 async?.forEach {
                     myChildren.add(createAsyncFrameDescriptor(evalContext, it, frames[frame]))
@@ -144,7 +145,7 @@ class CoroutineBuildFrameCommand(
         return myNodeManager.createNode(
             myNodeManager.getDescriptor(
                 descriptor,
-                CoroutineStackFrameData(descriptor.state, proxy, evalContext, frame)
+                CoroutineStackFrameData(descriptor.infoData, proxy, evalContext, frame)
             ), evalContext
         )
     }

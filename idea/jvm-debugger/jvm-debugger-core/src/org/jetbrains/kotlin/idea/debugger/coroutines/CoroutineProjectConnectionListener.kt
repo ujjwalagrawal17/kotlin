@@ -29,11 +29,9 @@ import com.intellij.util.messages.MessageBusConnection
 import com.intellij.xdebugger.*
 import com.intellij.xdebugger.impl.XDebugSessionImpl
 import org.jetbrains.kotlin.idea.KotlinBundle
-import org.jetbrains.kotlin.idea.debugger.coroutines.util.ContentParamProvider
-import org.jetbrains.kotlin.idea.debugger.coroutines.util.CreateContentParam
-import org.jetbrains.kotlin.idea.debugger.coroutines.util.logger
+import org.jetbrains.kotlin.idea.debugger.coroutines.util.*
 import org.jetbrains.kotlin.idea.debugger.coroutines.view.CoroutinesPanel
-import org.jetbrains.kotlin.idea.debugger.coroutines.view.XCoroutineThreadView
+import org.jetbrains.kotlin.idea.debugger.coroutines.view.XCoroutineView
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KProperty
@@ -93,18 +91,18 @@ class CoroutineProjectConnectionListener(val project: Project) : XDebuggerManage
 
     private fun createThreadsContent(session: XDebugSession) {
         val ui = session.ui ?: return
-        val xCoroutineThreadView = XCoroutineThreadView(project, session as XDebugSessionImpl)
+        val xCoroutineThreadView = XCoroutineView(project, session as XDebugSessionImpl)
         val framesContent: Content = assignContent(ui, xCoroutineThreadView)
         framesContent.isCloseable = false
         ui.addContent(framesContent, 0, PlaceInGrid.right, true)
-        session.addSessionListener(xCoroutineThreadView.debugSessionListenerProvider(session))
+        session.addSessionListener(xCoroutineThreadView.debugSessionListener(session))
         session.rebuildViews()
     }
 
-    fun assignContent(ui: RunnerLayoutUi, contentParamProvider: ContentParamProvider) =
-        assignContent(ui, contentParamProvider.provideContentParam())
+    fun assignContent(ui: RunnerLayoutUi, createContentParamProvider: CreateContentParamsProvider) =
+        assignContent(ui, createContentParamProvider.createContentParams())
 
-    private fun assignContent(ui: RunnerLayoutUi, param: CreateContentParam) =
+    private fun assignContent(ui: RunnerLayoutUi, param: CreateContentParams) =
         ui.createContent(param.id, param.component, param.displayName, param.icon, param.parentComponent)
 
 

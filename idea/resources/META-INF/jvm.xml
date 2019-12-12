@@ -90,7 +90,7 @@
 
         <applicationService serviceImplementation="org.jetbrains.kotlin.idea.debugger.ToggleKotlinVariablesState"/>
 
-        <debugger.asyncStackTraceProvider implementation="org.jetbrains.kotlin.idea.debugger.KotlinCoroutinesAsyncStackTraceProvider"/>
+        <debugger.asyncStackTraceProvider implementation="org.jetbrains.kotlin.idea.debugger.coroutines.CoroutineAsyncStackTraceProvider"/>
         <debugger.jvmSmartStepIntoHandler implementation="org.jetbrains.kotlin.idea.debugger.stepping.smartStepInto.KotlinSmartStepIntoHandler"/>
         <debugger.positionManagerFactory implementation="org.jetbrains.kotlin.idea.debugger.KotlinPositionManagerFactory"/>
         <debugger.codeFragmentFactory implementation="org.jetbrains.kotlin.idea.debugger.evaluate.KotlinCodeFragmentFactory"/>

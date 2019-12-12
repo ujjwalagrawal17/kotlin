@@ -16,11 +16,10 @@ import com.intellij.debugger.ui.impl.watch.NodeManagerImpl
 import com.intellij.openapi.ui.MessageType
 import com.intellij.xdebugger.impl.XDebuggerManagerImpl
 import org.jetbrains.kotlin.idea.KotlinBundle
-import org.jetbrains.kotlin.idea.debugger.coroutines.*
 import org.jetbrains.kotlin.idea.debugger.coroutines.data.CoroutineDescriptorData
-import org.jetbrains.kotlin.idea.debugger.coroutines.data.CoroutineState
+import org.jetbrains.kotlin.idea.debugger.coroutines.data.CoroutineInfoData
+import org.jetbrains.kotlin.idea.debugger.coroutines.proxy.CoroutinesDebugProbesProxy
 import org.jetbrains.kotlin.idea.debugger.coroutines.proxy.createEvaluationContext
-import org.jetbrains.kotlin.idea.debugger.coroutines.proxy.getProxyForContext
 import org.jetbrains.kotlin.idea.debugger.coroutines.view.CoroutinesDebuggerTree
 
 class RefreshCoroutinesTreeCommand(
@@ -33,7 +32,7 @@ class RefreshCoroutinesTreeCommand(
         val root = nf.defaultNode
         val sc: SuspendContextImpl? = suspendContext
         if (context.debuggerSession is DebuggerSession && sc is SuspendContextImpl && !sc.isResumed) {
-            val infoCache = getProxyForContext(sc).dumpCoroutines()
+            val infoCache = CoroutinesDebugProbesProxy(sc).dumpCoroutines()
             if (infoCache.isOk()) {
                 val evaluationContext = sc.createEvaluationContext()
 
@@ -57,12 +56,16 @@ class RefreshCoroutinesTreeCommand(
 
     private fun createCoroutineDescriptorNode(
         nodeFactory: NodeManagerImpl,
-        coroutineState: CoroutineState,
+        coroutineInfoData: CoroutineInfoData,
         evaluationContext: EvaluationContextImpl
     ) =
-        nodeFactory.createNode(nodeFactory.getDescriptor(null,
-                                                         CoroutineDescriptorData(coroutineState)
-        ), evaluationContext)
+        nodeFactory.createNode(
+            nodeFactory.getDescriptor(
+                null,
+                CoroutineDescriptorData(coroutineInfoData)
+            ),
+            evaluationContext
+        )
 
     private fun setRoot(root: DebuggerTreeNodeImpl) {
         DebuggerInvocationUtil.swingInvokeLater(debuggerTree.project) {

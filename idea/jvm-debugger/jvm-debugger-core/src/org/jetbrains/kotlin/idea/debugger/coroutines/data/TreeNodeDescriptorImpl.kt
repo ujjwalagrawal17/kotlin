@@ -19,24 +19,24 @@ import com.intellij.icons.AllIcons
 import com.sun.jdi.ObjectReference
 import javax.swing.Icon
 
-class CoroutineDescriptorImpl(val state: CoroutineState) : NodeDescriptorImpl() {
+class CoroutineDescriptorImpl(val infoData: CoroutineInfoData) : NodeDescriptorImpl() {
     lateinit var icon: Icon
 
-    override fun getName() = state.name
+    override fun getName() = infoData.name
 
     @Throws(EvaluateException::class)
     override fun calcRepresentation(context: EvaluationContextImpl?, labelListener: DescriptorLabelListener): String {
-        val thread = state.thread
-        val name = thread?.name()?.substringBefore(" @${state.name}") ?: ""
+        val thread = infoData.thread
+        val name = thread?.name()?.substringBefore(" @${infoData.name}") ?: ""
         val threadState = if (thread != null) DebuggerUtilsEx.getThreadStatusText(thread.status()) else ""
-        return "${state.name}: ${state.state}${if (name.isNotEmpty()) " on thread \"$name\":$threadState" else ""}"
+        return "${infoData.name}: ${infoData.state}${if (name.isNotEmpty()) " on thread \"$name\":$threadState" else ""}"
     }
 
-    override fun isExpandable() = state.state != CoroutineState.State.CREATED
+    override fun isExpandable() = infoData.state != CoroutineInfoData.State.CREATED
 
     private fun calcIcon() = when {
-        state.isSuspended() -> AllIcons.Debugger.ThreadSuspended
-        state.isCreated() -> AllIcons.Debugger.ThreadStates.Idle
+        infoData.isSuspended() -> AllIcons.Debugger.ThreadSuspended
+        infoData.isCreated() -> AllIcons.Debugger.ThreadStates.Idle
         else -> AllIcons.Debugger.ThreadRunning
     }
 
@@ -55,7 +55,7 @@ class CreationFramesDescriptor(val frames: List<StackTraceElement>)
  * Descriptor for suspend functions
  */
 class SuspendStackFrameDescriptor(
-    val state: CoroutineState,
+    val infoData: CoroutineInfoData,
     val frame: StackTraceElement,
     proxy: StackFrameProxyImpl,
     val continuation: ObjectReference
@@ -73,7 +73,7 @@ class SuspendStackFrameDescriptor(
 }
 
 
-class AsyncStackFrameDescriptor(val state: CoroutineState, val frame: StackFrameItem, proxy: StackFrameProxyImpl) :
+class AsyncStackFrameDescriptor(val infoData: CoroutineInfoData, val frame: StackFrameItem, proxy: StackFrameProxyImpl) :
     CoroutineStackFrameDescriptor(proxy) {
     override fun calcRepresentation(context: EvaluationContextImpl?, labelListener: DescriptorLabelListener?): String {
         return with(frame) {

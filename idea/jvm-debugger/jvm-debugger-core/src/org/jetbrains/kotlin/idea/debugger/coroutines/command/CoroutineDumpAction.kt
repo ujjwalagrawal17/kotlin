@@ -27,7 +27,7 @@ import com.intellij.xdebugger.impl.XDebuggerManagerImpl
 import org.jetbrains.kotlin.idea.KotlinBundle
 import org.jetbrains.kotlin.idea.debugger.coroutines.view.CoroutineDumpPanel
 import org.jetbrains.kotlin.idea.debugger.coroutines.coroutineDebuggerEnabled
-import org.jetbrains.kotlin.idea.debugger.coroutines.data.CoroutineState
+import org.jetbrains.kotlin.idea.debugger.coroutines.data.CoroutineInfoData
 import org.jetbrains.kotlin.idea.debugger.coroutines.proxy.CoroutinesDebugProbesProxy
 
 @Suppress("ComponentNotRegistered")
@@ -42,7 +42,7 @@ class CoroutineDumpAction : AnAction(), AnAction.TransparentUpdate {
             val process = context.debugProcess ?: return
             process.managerThread.schedule(object : SuspendContextCommandImpl(context.suspendContext) {
                 override fun contextAction() {
-                    val states = CoroutinesDebugProbesProxy(context.suspendContext!!).dumpCoroutines() ?: return
+                    val states = CoroutinesDebugProbesProxy(context.suspendContext!!, session.debugProcess).dumpCoroutines() ?: return
                     if (states.isOk()) {
                         XDebuggerManagerImpl.NOTIFICATION_GROUP.createNotification(
                             KotlinBundle.message("debugger.session.tab.coroutine.message.error"),
@@ -67,7 +67,7 @@ class CoroutineDumpAction : AnAction(), AnAction.TransparentUpdate {
     /**
      * Analog of [DebuggerUtilsEx.addThreadDump].
      */
-    fun addCoroutineDump(project: Project, coroutines: List<CoroutineState>, ui: RunnerLayoutUi, searchScope: GlobalSearchScope) {
+    fun addCoroutineDump(project: Project, coroutines: List<CoroutineInfoData>, ui: RunnerLayoutUi, searchScope: GlobalSearchScope) {
         val consoleBuilder = TextConsoleBuilderFactory.getInstance().createBuilder(project)
         consoleBuilder.filters(ExceptionFilters.getFilters(searchScope))
         val consoleView = consoleBuilder.console

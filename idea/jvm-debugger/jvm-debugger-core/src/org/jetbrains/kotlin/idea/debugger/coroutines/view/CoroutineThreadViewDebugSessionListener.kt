@@ -11,17 +11,16 @@ import com.intellij.xdebugger.XDebugSessionListener
 import com.intellij.xdebugger.frame.XSuspendContext
 import com.intellij.xdebugger.impl.ui.DebuggerUIUtil
 import org.jetbrains.kotlin.idea.debugger.coroutines.util.logger
-import org.jetbrains.kotlin.idea.debugger.coroutines.view.XCoroutineThreadView
 
 class CoroutineThreadViewDebugSessionListener(
     private val session: XDebugSession,
-    private val xCoroutineThreadView: XCoroutineThreadView
+    private val xCoroutineView: XCoroutineView
 ) : XDebugSessionListener {
     val log by logger
 
     override fun sessionPaused() {
         val suspendContext = session.suspendContext ?: return requestClear()
-        xCoroutineThreadView.forceClear()
+        xCoroutineView.forceClear()
         renew(suspendContext)
     }
 
@@ -55,15 +54,15 @@ class CoroutineThreadViewDebugSessionListener(
 
     fun renew(suspendContext: XSuspendContext) {
         DebuggerUIUtil.invokeLater {
-            xCoroutineThreadView.panel.tree.setRoot(xCoroutineThreadView.createRoot(suspendContext), false)
+            xCoroutineView.panel.tree.setRoot(xCoroutineView.createRoot(suspendContext), false)
         }
     }
 
     fun requestClear() {
         if (ApplicationManager.getApplication().isUnitTestMode) { // no delay in tests
-            xCoroutineThreadView.clear()
+            xCoroutineView.clear()
         } else {
-            xCoroutineThreadView.alarm.cancelAndRequest()
+            xCoroutineView.alarm.cancelAndRequest()
         }
     }
 }

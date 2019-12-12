@@ -32,7 +32,7 @@ import com.intellij.ui.components.JBList
 import com.intellij.unscramble.AnalyzeStacktraceUtil
 import com.intellij.util.PlatformIcons
 import com.intellij.util.ui.EmptyIcon
-import org.jetbrains.kotlin.idea.debugger.coroutines.data.CoroutineState
+import org.jetbrains.kotlin.idea.debugger.coroutines.data.CoroutineInfoData
 import java.awt.BorderLayout
 import java.awt.Color
 import java.awt.datatransfer.StringSelection
@@ -43,10 +43,10 @@ import javax.swing.event.DocumentEvent
 /**
  * Panel with dump of coroutines
  */
-class CoroutineDumpPanel(project: Project, consoleView: ConsoleView, toolbarActions: DefaultActionGroup, val dump: List<CoroutineState>) :
+class CoroutineDumpPanel(project: Project, consoleView: ConsoleView, toolbarActions: DefaultActionGroup, val dump: List<CoroutineInfoData>) :
     JPanel(BorderLayout()), DataProvider {
     private var exporterToTextFile: ExporterToTextFile
-    private var mergedDump = ArrayList<CoroutineState>()
+    private var mergedDump = ArrayList<CoroutineInfoData>()
     val filterField = SearchTextField()
     val filterPanel = JPanel(BorderLayout())
     private val coroutinesList = JBList(DefaultListModel<Any>())
@@ -72,7 +72,7 @@ class CoroutineDumpPanel(project: Project, consoleView: ConsoleView, toolbarActi
             addListSelectionListener {
                 val index = selectedIndex
                 if (index >= 0) {
-                    val selection = model.getElementAt(index) as CoroutineState
+                    val selection = model.getElementAt(index) as CoroutineInfoData
                     AnalyzeStacktraceUtil.printStacktrace(consoleView, selection.stringStackTrace)
                 } else {
                     AnalyzeStacktraceUtil.printStacktrace(consoleView, "")
@@ -178,18 +178,18 @@ class CoroutineDumpPanel(project: Project, consoleView: ConsoleView, toolbarActi
 
     override fun getData(dataId: String): Any? = if (PlatformDataKeys.EXPORTER_TO_TEXT_FILE.`is`(dataId)) exporterToTextFile else null
 
-    private fun getCoroutineStateIcon(state: CoroutineState): Icon {
-        return when (state.state) {
-            CoroutineState.State.RUNNING -> LayeredIcon(AllIcons.Actions.Resume, Daemon_sign)
-            CoroutineState.State.SUSPENDED -> AllIcons.Actions.Pause
+    private fun getCoroutineStateIcon(infoData: CoroutineInfoData): Icon {
+        return when (infoData.state) {
+            CoroutineInfoData.State.RUNNING -> LayeredIcon(AllIcons.Actions.Resume, Daemon_sign)
+            CoroutineInfoData.State.SUSPENDED -> AllIcons.Actions.Pause
             else -> EmptyIcon.create(6)
         }
     }
 
-    private fun getAttributes(state: CoroutineState): SimpleTextAttributes {
+    private fun getAttributes(infoData: CoroutineInfoData): SimpleTextAttributes {
         return when {
-            state.isSuspended() -> SimpleTextAttributes.GRAY_ATTRIBUTES
-            state.isEmptyStackTrace() -> SimpleTextAttributes(SimpleTextAttributes.STYLE_PLAIN, Color.GRAY.brighter())
+            infoData.isSuspended() -> SimpleTextAttributes.GRAY_ATTRIBUTES
+            infoData.isEmptyStackTrace() -> SimpleTextAttributes(SimpleTextAttributes.STYLE_PLAIN, Color.GRAY.brighter())
             else -> SimpleTextAttributes.REGULAR_ATTRIBUTES
 
         }
@@ -198,7 +198,7 @@ class CoroutineDumpPanel(project: Project, consoleView: ConsoleView, toolbarActi
     private inner class CoroutineListCellRenderer : ColoredListCellRenderer<Any>() {
 
         override fun customizeCellRenderer(list: JList<*>, value: Any, index: Int, selected: Boolean, hasFocus: Boolean) {
-            val state = value as CoroutineState
+            val state = value as CoroutineInfoData
             icon = getCoroutineStateIcon(state)
             val attrs = getAttributes(state)
             append(state.name + " (", attrs)
@@ -250,7 +250,7 @@ class CoroutineDumpPanel(project: Project, consoleView: ConsoleView, toolbarActi
         }
     }
 
-    private class CopyToClipboardAction(private val myCoroutinesDump: List<CoroutineState>, private val myProject: Project) :
+    private class CopyToClipboardAction(private val myCoroutinesDump: List<CoroutineInfoData>, private val myProject: Project) :
         DumbAwareAction("Copy to Clipboard", "Copy whole coroutine dump to clipboard", PlatformIcons.COPY_ICON) {
 
         override fun actionPerformed(e: AnActionEvent) {
@@ -272,17 +272,17 @@ class CoroutineDumpPanel(project: Project, consoleView: ConsoleView, toolbarActi
 
     private class MyToFileExporter(
         private val myProject: Project,
-        private val states: List<CoroutineState>
+        private val infoData: List<CoroutineInfoData>
     ) : ExporterToTextFile {
 
         override fun getReportText() = buildString {
-            for (state in states)
+            for (state in infoData)
                 append(state.stringStackTrace).append("\n\n")
         }
 
         override fun getDefaultFilePath() = (myProject.basePath ?: "") + File.separator + defaultReportFileName
 
-        override fun canExport() = states.isNotEmpty()
+        override fun canExport() = infoData.isNotEmpty()
 
         private val defaultReportFileName = "coroutines_report.txt"
     }

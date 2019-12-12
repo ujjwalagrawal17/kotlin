@@ -17,8 +17,8 @@ import com.sun.jdi.*
 import org.jetbrains.kotlin.idea.debugger.coroutines.proxy.LookupContinuation
 import org.jetbrains.kotlin.idea.debugger.evaluate.ExecutionContext
 
-class CoroutineStackTraceData(state: CoroutineState, proxy: StackFrameProxyImpl, evalContext: EvaluationContextImpl, val frame: StackTraceElement)
-    : CoroutineStackDescriptorData(state, proxy, evalContext) {
+class CoroutineStackTraceData(infoData: CoroutineInfoData, proxy: StackFrameProxyImpl, evalContext: EvaluationContextImpl, val frame: StackTraceElement)
+    : CoroutineStackDescriptorData(infoData, proxy, evalContext) {
 
     override fun hashCode() = frame.hashCode()
 
@@ -30,42 +30,42 @@ class CoroutineStackTraceData(state: CoroutineState, proxy: StackFrameProxyImpl,
         val lookupContinuation = LookupContinuation(context, frame)
 
         // retrieve continuation only if suspend method
-        val continuation = lookupContinuation.findContinuation(state)
+        val continuation = lookupContinuation.findContinuation(infoData)
 
         return if (continuation is ObjectReference)
-            SuspendStackFrameDescriptor(state, frame, proxy, continuation)
+            SuspendStackFrameDescriptor(infoData, frame, proxy, continuation)
             else
             CoroutineCreatedStackFrameDescriptor(frame, proxy)
     }
 }
 
-class CoroutineStackFrameData(state: CoroutineState, proxy: StackFrameProxyImpl, evalContext: EvaluationContextImpl, val frame: StackFrameItem)
-    : CoroutineStackDescriptorData(state, proxy, evalContext) {
+class CoroutineStackFrameData(infoData: CoroutineInfoData, proxy: StackFrameProxyImpl, evalContext: EvaluationContextImpl, val frame: StackFrameItem)
+    : CoroutineStackDescriptorData(infoData, proxy, evalContext) {
     override fun createDescriptorImpl(project: Project): NodeDescriptorImpl =
-        AsyncStackFrameDescriptor(state, frame, proxy)
+        AsyncStackFrameDescriptor(infoData, frame, proxy)
 
     override fun hashCode() = frame.hashCode()
 
     override fun equals(other: Any?) = other is CoroutineStackFrameData && frame == other.frame
 }
 
-abstract class CoroutineStackDescriptorData(val state: CoroutineState, val proxy: StackFrameProxyImpl, val evalContext: EvaluationContextImpl)
+abstract class CoroutineStackDescriptorData(val infoData: CoroutineInfoData, val proxy: StackFrameProxyImpl, val evalContext: EvaluationContextImpl)
     : DescriptorData<NodeDescriptorImpl>() {
 
-    override fun getDisplayKey(): DisplayKey<NodeDescriptorImpl> = SimpleDisplayKey(state)
+    override fun getDisplayKey(): DisplayKey<NodeDescriptorImpl> = SimpleDisplayKey(infoData)
 }
 
 /**
  * Describes coroutine itself in the tree (name: STATE), has children if stacktrace is not empty (state = CREATED)
  */
-class CoroutineDescriptorData(private val state: CoroutineState) : DescriptorData<CoroutineDescriptorImpl>() {
+class CoroutineDescriptorData(private val infoData: CoroutineInfoData) : DescriptorData<CoroutineDescriptorImpl>() {
 
     override fun createDescriptorImpl(project: Project) =
-        CoroutineDescriptorImpl(state)
+        CoroutineDescriptorImpl(infoData)
 
-    override fun equals(other: Any?) = if (other !is CoroutineDescriptorData) false else state.name == other.state.name
+    override fun equals(other: Any?) = if (other !is CoroutineDescriptorData) false else infoData.name == other.infoData.name
 
-    override fun hashCode() = state.name.hashCode()
+    override fun hashCode() = infoData.name.hashCode()
 
-    override fun getDisplayKey(): DisplayKey<CoroutineDescriptorImpl> = SimpleDisplayKey(state.name)
+    override fun getDisplayKey(): DisplayKey<CoroutineDescriptorImpl> = SimpleDisplayKey(infoData.name)
 }

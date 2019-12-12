@@ -11,7 +11,7 @@ import com.intellij.jarRepository.JarRepositoryManager
 import com.intellij.jarRepository.RemoteRepositoryDescription
 import org.jetbrains.idea.maven.aether.ArtifactKind
 import org.jetbrains.jps.model.library.JpsMavenRepositoryLibraryDescriptor
-import org.jetbrains.kotlin.idea.debugger.coroutines.data.CoroutineState
+import org.jetbrains.kotlin.idea.debugger.coroutines.data.CoroutineInfoData
 import org.jetbrains.kotlin.idea.debugger.coroutines.proxy.getProxyForContext
 import org.jetbrains.kotlin.idea.debugger.test.preference.DebuggerPreferences
 
@@ -53,8 +53,8 @@ abstract class AbstractCoroutineDumpTest : KotlinDescriptorTestCaseWithStepping(
         }
     }
 
-    private fun stringDump(states: List<CoroutineState>) = buildString {
-        states.forEach {
+    private fun stringDump(infoData: List<CoroutineInfoData>) = buildString {
+        infoData.forEach {
             appendln("\"${it.name}\", state: ${it.state}")
         }
     }

@@ -7,17 +7,16 @@ package org.jetbrains.kotlin.idea.debugger.coroutines.proxy
 import com.intellij.debugger.engine.SuspendContextImpl
 import com.intellij.debugger.engine.evaluation.EvaluationContextImpl
 import com.intellij.debugger.jdi.StackFrameProxyImpl
+import com.intellij.xdebugger.XDebugProcess
 import com.sun.jdi.*
+import org.jetbrains.kotlin.idea.debugger.coroutines.command.CoroutineBuilder
 import org.jetbrains.kotlin.idea.debugger.coroutines.view.CoroutineInfoCache
-import org.jetbrains.kotlin.idea.debugger.coroutines.data.CoroutineState
+import org.jetbrains.kotlin.idea.debugger.coroutines.data.CoroutineInfoData
 import org.jetbrains.kotlin.idea.debugger.coroutines.util.logger
 import org.jetbrains.kotlin.idea.debugger.evaluate.ExecutionContext
 
 fun SuspendContextImpl.createEvaluationContext() =
     EvaluationContextImpl(this, this.frameProxy)
-
-fun getProxyForContext(suspendContext: SuspendContextImpl) =
-    CoroutinesDebugProbesProxy(suspendContext)
 
 class CoroutinesDebugProbesProxy(val suspendContext: SuspendContextImpl) {
     private val log by logger
@@ -61,7 +60,7 @@ class CoroutinesDebugProbesProxy(val suspendContext: SuspendContextImpl) {
         return coroutineInfoCache
     }
 
-    private fun dump(): List<CoroutineState> {
+    private fun dump(): List<CoroutineInfoData> {
         val coroutinesInfo = dumpCoroutinesInfo() ?: return emptyList()
 
         executionContext.keepReference(coroutinesInfo)
@@ -76,25 +75,37 @@ class CoroutinesDebugProbesProxy(val suspendContext: SuspendContextImpl) {
     private fun dumpCoroutinesInfo() =
         executionContext.invokeMethodAsObject(refs.instance, refs.dumpMethod)
 
+    fun frameBuilder() = CoroutineBuilder(suspendContext)
+
     private fun getElementFromList(instance: ObjectReference, num: Int) =
         executionContext.invokeMethod(
             instance, refs.getRef,
             listOf(executionContext.vm.virtualMachine.mirrorOf(num))
         ) as ObjectReference
 
-    private fun fetchCoroutineState(instance: ObjectReference) : CoroutineState {
+    private fun fetchCoroutineState(instance: ObjectReference) : CoroutineInfoData {
         val name = getName(instance)
         val state = getState(instance)
         val thread = getLastObservedThread(instance, refs.lastObservedThreadFieldRef)
         val lastObservedFrameFieldRef = instance.getValue(refs.lastObservedFrameFieldRef) as? ObjectReference
-        return CoroutineState(
+        return CoroutineInfoData(
             name,
-            CoroutineState.State.valueOf(state),
+            CoroutineInfoData.State.valueOf(state),
+            getThreadName(instance),
+            getThreadState(instance),
+
+            getStackTrace(instance),
             thread,
-            getStackTrace(instance),
-            getStackTrace(instance),
             lastObservedFrameFieldRef
         )
+    }
+
+    private fun getThreadName(instance: ObjectReference) : String {
+        return "thread name"
+    }
+
+    private fun getThreadState(instance: ObjectReference) : Int {
+        return 1
     }
 
     private fun getName(
