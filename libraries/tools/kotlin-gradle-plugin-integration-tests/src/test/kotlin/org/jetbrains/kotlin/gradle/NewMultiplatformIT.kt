@@ -1043,6 +1043,16 @@ class NewMultiplatformIT : BaseGradleIT() {
             assertTrue(output.contains("Check link task: linkReleaseShared$hostSuffix"))
             assertTrue(output.contains("Check run task: runFooReleaseExecutable$hostSuffix"))
 
+            // Check that by default bitcode embedding is disabled for host platforms.
+            linkTasks.filterNot { it == "linkTest2ReleaseExecutable$hostSuffix" }
+                .map { ":$it" }
+                .forEach {
+                    checkNativeCommandLineFor(it) {
+                        assertFalse(it.contains("-Xembed-bitcode"))
+                        assertFalse(it.contains("-Xembed-bitcode-marker"))
+                    }
+                }
+
             // Check that dependency export works for static and shared libs.
             val staticSuffix = CompilerOutputKind.STATIC.suffix(HostManager.host)
             val sharedSuffix = CompilerOutputKind.DYNAMIC.suffix(HostManager.host)
@@ -1091,6 +1101,7 @@ class NewMultiplatformIT : BaseGradleIT() {
             checkNativeCommandLineFor(":linkTest2ReleaseExecutable$hostSuffix") {
                 assertTrue(it.contains("-tr"))
                 assertTrue(it.contains("-Xtime"))
+                assertTrue(it.contains("-Xembed-bitcode"))
                 // Check that kotlinOptions of the compilation don't affect the binary.
                 assertFalse(it.contains("-verbose"))
                 // Check that free args are still propagated to the binary (unlike other kotlinOptions, see KT-33717).

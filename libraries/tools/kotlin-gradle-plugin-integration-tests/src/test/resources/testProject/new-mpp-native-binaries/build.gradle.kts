@@ -46,6 +46,7 @@ kotlin {
             executable("test2") {
                 compilation = compilations["test"]
                 freeCompilerArgs += "-tr"
+                embedBitcode("bitcode")
                 linkTask.kotlinOptions {
                     freeCompilerArgs += "-Xtime"
                 }

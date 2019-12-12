@@ -84,6 +84,45 @@ sealed class NativeBinary(
     val outputFile: File
         get() = linkTask.outputFile.get()
 
+    // Embedding bitcode.
+    /**
+     * Embed bitcode for the framework or not. See [BitcodeEmbeddingMode].
+     */
+    var embedBitcode: BitcodeEmbeddingMode = buildType.embedBitcode(konanTarget)
+
+    /**
+     * Enable or disable embedding bitcode for the framework. See [BitcodeEmbeddingMode].
+     */
+    fun embedBitcode(mode: BitcodeEmbeddingMode) {
+        embedBitcode = mode
+    }
+
+    /**
+     * Enable or disable embedding bitcode for the framework.
+     * The parameter [mode] is one of the following string constants:
+     *
+     *     disable - Don't embed LLVM IR bitcode.
+     *     bitcode - Embed LLVM IR bitcode as data.
+     *               Has the same effect as the -Xembed-bitcode command line option.
+     *     marker - Embed placeholder LLVM IR data as a marker.
+     *              Has the same effect as the -Xembed-bitcode-marker command line option.
+     */
+    fun embedBitcode(mode: String) = embedBitcode(BitcodeEmbeddingMode.valueOf(mode.toUpperCase()))
+
+    /**
+     * Specifies if the framework is linked as a static library (false by default).
+     */
+    var isStatic = false
+
+    enum class BitcodeEmbeddingMode {
+        /** Don't embed LLVM IR bitcode. */
+        DISABLE,
+        /** Embed LLVM IR bitcode as data. */
+        BITCODE,
+        /** Embed placeholder LLVM IR data as a marker. */
+        MARKER,
+    }
+
     // Named implementation.
     override fun getName(): String = name
 }
@@ -220,45 +259,6 @@ class Framework(
 
     override val outputKind: NativeOutputKind
         get() = NativeOutputKind.FRAMEWORK
-
-    // Embedding bitcode.
-    /**
-     * Embed bitcode for the framework or not. See [BitcodeEmbeddingMode].
-     */
-    var embedBitcode: BitcodeEmbeddingMode = buildType.embedBitcode(konanTarget)
-
-    /**
-     * Enable or disable embedding bitcode for the framework. See [BitcodeEmbeddingMode].
-     */
-    fun embedBitcode(mode: BitcodeEmbeddingMode) {
-        embedBitcode = mode
-    }
-
-    /**
-     * Enable or disable embedding bitcode for the framework.
-     * The parameter [mode] is one of the following string constants:
-     *
-     *     disable - Don't embed LLVM IR bitcode.
-     *     bitcode - Embed LLVM IR bitcode as data.
-     *               Has the same effect as the -Xembed-bitcode command line option.
-     *     marker - Embed placeholder LLVM IR data as a marker.
-     *              Has the same effect as the -Xembed-bitcode-marker command line option.
-     */
-    fun embedBitcode(mode: String) = embedBitcode(BitcodeEmbeddingMode.valueOf(mode.toUpperCase()))
-
-    /**
-     * Specifies if the framework is linked as a static library (false by default).
-     */
-    var isStatic = false
-
-    enum class BitcodeEmbeddingMode {
-        /** Don't embed LLVM IR bitcode. */
-        DISABLE,
-        /** Embed LLVM IR bitcode as data. */
-        BITCODE,
-        /** Embed placeholder LLVM IR data as a marker. */
-        MARKER,
-    }
 }
 
 

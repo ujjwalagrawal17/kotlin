@@ -2,7 +2,7 @@
 package org.jetbrains.kotlin.gradle.plugin.mpp
 
 import org.gradle.api.Named
-import org.jetbrains.kotlin.gradle.plugin.mpp.Framework.BitcodeEmbeddingMode
+import org.jetbrains.kotlin.gradle.plugin.mpp.NativeBinary.BitcodeEmbeddingMode
 import org.jetbrains.kotlin.konan.target.Architecture.ARM32
 import org.jetbrains.kotlin.konan.target.Architecture.ARM64
 import org.jetbrains.kotlin.konan.target.CompilerOutputKind

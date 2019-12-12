@@ -25,6 +25,7 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinCompile
 import org.jetbrains.kotlin.gradle.plugin.LanguageSettingsBuilder
 import org.jetbrains.kotlin.gradle.plugin.cocoapods.asValidFrameworkName
 import org.jetbrains.kotlin.gradle.plugin.mpp.*
+import org.jetbrains.kotlin.gradle.plugin.mpp.NativeBinary.BitcodeEmbeddingMode
 import org.jetbrains.kotlin.konan.target.CompilerOutputKind
 import org.jetbrains.kotlin.konan.target.CompilerOutputKind.*
 import org.jetbrains.kotlin.konan.target.KonanTarget
@@ -493,8 +494,8 @@ open class KotlinNativeLink : AbstractKotlinNativeCompile<KotlinCommonToolOption
         get() = binary.let { it is Framework && it.isStatic }
 
     @get:Input
-    val embedBitcode: Framework.BitcodeEmbeddingMode
-        get() = (binary as? Framework)?.embedBitcode ?: Framework.BitcodeEmbeddingMode.DISABLE
+    val embedBitcode: BitcodeEmbeddingMode
+        get() = binary.embedBitcode
 
     // This property allows a user to force the old behaviour of a link task
     // to workaround issues that may occur after switching to the two-stage linking.
@@ -509,8 +510,8 @@ open class KotlinNativeLink : AbstractKotlinNativeCompile<KotlinCommonToolOption
         addKey("-tr", processTests)
         addArgIfNotNull("-entry", entryPoint)
         when (embedBitcode) {
-            Framework.BitcodeEmbeddingMode.MARKER -> add("-Xembed-bitcode-marker")
-            Framework.BitcodeEmbeddingMode.BITCODE -> add("-Xembed-bitcode")
+            BitcodeEmbeddingMode.MARKER -> add("-Xembed-bitcode-marker")
+            BitcodeEmbeddingMode.BITCODE -> add("-Xembed-bitcode")
             else -> { /* Do nothing. */ }
         }
         linkerOpts.forEach {
