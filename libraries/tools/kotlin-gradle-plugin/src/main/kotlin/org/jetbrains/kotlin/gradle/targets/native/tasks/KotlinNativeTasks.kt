@@ -80,9 +80,23 @@ private fun FileCollection.filterOutPublishableInteropLibs(project: Project): Fi
     }
 }
 
-private fun Collection<File>.filterExternalKlibs(project: Project) = filter {
-    // Support only klib files for now.
-    it.extension == "klib" && !it.providedByCompiler(project)
+/**
+ * We pass to the compiler:
+ *
+ *    - Only *.klib files. A dependency configuration may contain jar files
+ *      (e.g. when a common artifact was directly added to commonMain source set).
+ *      So, we need to filter out such artifacts.
+ *
+ *    - Only existing files. We don't compile a klib if there are no sources
+ *      for it (NO-SOURCE check). So we need to take this case into account
+ *      and skip libraries that were not compiled. See also: GH-2617 (K/N repo).
+ *
+ *    - Only external libraries (not stdlib/platform libs). We add stdlib and
+ *      platform libs to dependencies to get an IDE support. But the compiler
+ *      uses them by default so we don't pass them to the compiler explicitly.
+ */
+private fun Collection<File>.filterKlibsPassedToCompiler(project: Project) = filter {
+    it.extension == "klib" && it.exists() && !it.providedByCompiler(project)
 }
 
 // endregion
@@ -227,7 +241,7 @@ abstract class AbstractKotlinNativeCompile<T : KotlinCommonToolOptions> : Abstra
         addArg("-o", outputFile.get().absolutePath)
 
         // Libraries.
-        libraries.files.filterExternalKlibs(project).forEach { library ->
+        libraries.files.filterKlibsPassedToCompiler(project).forEach { library ->
             addArg("-l", library.absolutePath)
         }
     }
@@ -517,7 +531,7 @@ open class KotlinNativeLink : AbstractKotlinNativeCompile<KotlinCommonToolOption
         linkerOpts.forEach {
             addArg("-linker-option", it)
         }
-        exportLibraries.files.filterExternalKlibs(project).forEach {
+        exportLibraries.files.filterKlibsPassedToCompiler(project).forEach {
             add("-Xexport-library=${it.absolutePath}")
         }
         addKey("-Xstatic-framework", isStaticFramework)
@@ -566,11 +580,11 @@ open class KotlinNativeLink : AbstractKotlinNativeCompile<KotlinCommonToolOption
 
     private fun validatedExportedLibraries() {
         val exportConfiguration = exportLibraries as? Configuration ?: return
-        val apiFiles = project.configurations.getByName(compilation.apiConfigurationName).files.filterExternalKlibs(project)
+        val apiFiles = project.configurations.getByName(compilation.apiConfigurationName).files.filterKlibsPassedToCompiler(project)
 
         val failed = mutableSetOf<Dependency>()
         exportConfiguration.allDependencies.forEach {
-            val dependencyFiles = exportConfiguration.files(it).filterExternalKlibs(project)
+            val dependencyFiles = exportConfiguration.files(it).filterKlibsPassedToCompiler(project)
             if (!apiFiles.containsAll(dependencyFiles)) {
                 failed.add(it)
             }
@@ -689,7 +703,7 @@ open class CInteropProcess : DefaultTask() {
                 addArg("-linker-option", it)
             }
 
-            libraries.files.filterExternalKlibs(project).forEach { library ->
+            libraries.files.filterKlibsPassedToCompiler(project).forEach { library ->
                 addArg("-library", library.absolutePath)
             }
 
