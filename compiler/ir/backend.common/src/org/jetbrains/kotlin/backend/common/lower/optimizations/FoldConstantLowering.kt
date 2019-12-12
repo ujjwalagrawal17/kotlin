@@ -109,16 +109,17 @@ class FoldConstantLowering(
     }
 
     private fun buildIrConstant(call: IrCall, v: Any): IrExpression {
+        val constType = call.type.makeNotNull()
         return when {
-            call.type.isInt() -> IrConstImpl.int(call.startOffset, call.endOffset, call.type, v as Int)
-            call.type.isChar() -> IrConstImpl.char(call.startOffset, call.endOffset, call.type, v as Char)
-            call.type.isBoolean() -> IrConstImpl.boolean(call.startOffset, call.endOffset, call.type, v as Boolean)
-            call.type.isByte() -> IrConstImpl.byte(call.startOffset, call.endOffset, call.type, v as Byte)
-            call.type.isShort() -> IrConstImpl.short(call.startOffset, call.endOffset, call.type, v as Short)
-            call.type.isLong() -> IrConstImpl.long(call.startOffset, call.endOffset, call.type, v as Long)
-            call.type.isDouble() -> IrConstImpl.double(call.startOffset, call.endOffset, call.type, v as Double)
-            call.type.isFloat() -> fromFloatConstSafe(call, v)
-            call.type.isString() -> IrConstImpl.string(call.startOffset, call.endOffset, call.type, v as String)
+            constType.isInt() -> IrConstImpl.int(call.startOffset, call.endOffset, constType, v as Int)
+            constType.isChar() -> IrConstImpl.char(call.startOffset, call.endOffset, constType, v as Char)
+            constType.isBoolean() -> IrConstImpl.boolean(call.startOffset, call.endOffset, constType, v as Boolean)
+            constType.isByte() -> IrConstImpl.byte(call.startOffset, call.endOffset, constType, v as Byte)
+            constType.isShort() -> IrConstImpl.short(call.startOffset, call.endOffset, constType, v as Short)
+            constType.isLong() -> IrConstImpl.long(call.startOffset, call.endOffset, constType, v as Long)
+            constType.isDouble() -> IrConstImpl.double(call.startOffset, call.endOffset, constType, v as Double)
+            constType.isFloat() -> fromFloatConstSafe(call, v)
+            constType.isString() -> IrConstImpl.string(call.startOffset, call.endOffset, constType, v as String)
             else -> throw IllegalArgumentException("Unexpected IrCall return type")
         }
     }
