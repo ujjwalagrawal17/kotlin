@@ -124,7 +124,7 @@ open class FunctionCodegen(
             // This is just a template for inliner
             origin != JvmLoweredDeclarationOrigin.FOR_INLINE_STATE_MACHINE_TEMPLATE_CAPTURES_CROSSINLINE &&
             // Continuations are generated for suspendImpls
-            parentAsClass.declarations.filterIsInstance<IrFunction>().find { it.name.asString() == name.asString() + SUSPEND_IMPL_NAME_SUFFIX } == null
+            parentAsClass.functions.none { it.name.asString() == name.asString() + SUSPEND_IMPL_NAME_SUFFIX }
 
     private fun continuationClass(): IrClass =
         irFunction.body!!.statements[0] as IrClass
