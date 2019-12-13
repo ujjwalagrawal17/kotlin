@@ -5,8 +5,7 @@
 
 package org.jetbrains.kotlin.fir.resolve.dfa
 
-import org.jetbrains.kotlin.fir.FirElement
-import org.jetbrains.kotlin.fir.FirSymbolOwner
+import org.jetbrains.kotlin.fir.*
 import org.jetbrains.kotlin.fir.contracts.description.ConeBooleanConstantReference
 import org.jetbrains.kotlin.fir.contracts.description.ConeConditionalEffectDeclaration
 import org.jetbrains.kotlin.fir.contracts.description.ConeConstantReference
@@ -32,8 +31,6 @@ import org.jetbrains.kotlin.fir.symbols.CallableId
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirVariableSymbol
 import org.jetbrains.kotlin.fir.types.*
-import org.jetbrains.kotlin.fir.unwrapSmartcast
-import org.jetbrains.kotlin.fir.unwrapWhenSubjectExpression
 import org.jetbrains.kotlin.fir.visitors.transformSingle
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
@@ -526,7 +523,7 @@ class FirDataFlowAnalyzer(private val components: FirAbstractBodyResolveTransfor
         qualifiedAccess.explicitReceiver?.let {
             val type = it.typeRef.coneTypeSafe<ConeKotlinType>()
                 ?.takeIf { it.isMarkedNullable }
-                ?.withNullability(ConeNullability.NOT_NULL)
+                ?.withNullability(ConeNullability.NOT_NULL, session.typeContext)
                 ?: return@let
 
             when (val variable = getOrCreateVariable(it)) {

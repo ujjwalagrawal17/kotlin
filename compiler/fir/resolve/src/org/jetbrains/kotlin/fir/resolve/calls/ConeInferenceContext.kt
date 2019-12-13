@@ -48,7 +48,7 @@ interface ConeInferenceContext : TypeSystemInferenceExtensionContext,
         require(lowerBound is ConeKotlinType)
         require(upperBound is ConeKotlinType)
 
-        return ConeFlexibleType(lowerBound, upperBound)
+        return coneFlexibleOrSimpleType(this, lowerBound, upperBound)
     }
 
     override fun createSimpleType(
@@ -186,7 +186,7 @@ interface ConeInferenceContext : TypeSystemInferenceExtensionContext,
 
     override fun KotlinTypeMarker.withNullability(nullable: Boolean): KotlinTypeMarker {
         require(this is ConeKotlinType)
-        return this.withNullability(ConeNullability.create(nullable))
+        return this.withNullability(ConeNullability.create(nullable), this@ConeInferenceContext)
     }
 
     override fun KotlinTypeMarker.makeDefinitelyNotNullOrNotNull(): KotlinTypeMarker {

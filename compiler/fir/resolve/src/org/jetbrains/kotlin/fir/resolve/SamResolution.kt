@@ -23,6 +23,7 @@ import org.jetbrains.kotlin.fir.symbols.impl.ConeClassLikeLookupTagImpl
 import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirTypeParameterSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirVariableSymbol
+import org.jetbrains.kotlin.fir.typeContext
 import org.jetbrains.kotlin.fir.types.*
 import org.jetbrains.kotlin.fir.types.impl.ConeClassLikeTypeImpl
 import org.jetbrains.kotlin.fir.types.impl.ConeTypeParameterTypeImpl
@@ -87,7 +88,7 @@ class FirSamResolverImpl(
         val result =
             substitutor
                 .substituteOrSelf(unsubstitutedFunctionType)
-                .withNullability(ConeNullability.create(type.isMarkedNullable))
+                .withNullability(ConeNullability.create(type.isMarkedNullable), firSession.typeContext)
 
         require(result is ConeLookupTagBasedType) {
             "Function type should always be ConeLookupTagBasedType, but ${result::class} was found"

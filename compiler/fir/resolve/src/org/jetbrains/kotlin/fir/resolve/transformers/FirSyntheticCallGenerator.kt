@@ -31,6 +31,7 @@ import org.jetbrains.kotlin.fir.symbols.SyntheticCallableId
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirTypeParameterSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirVariableSymbol
+import org.jetbrains.kotlin.fir.typeContext
 import org.jetbrains.kotlin.fir.types.*
 import org.jetbrains.kotlin.fir.types.impl.ConeTypeParameterTypeImpl
 import org.jetbrains.kotlin.fir.types.impl.FirResolvedTypeRefImpl
@@ -190,7 +191,11 @@ class FirSyntheticCallGenerator(
         val returnType = FirResolvedTypeRefImpl(null, ConeTypeParameterTypeImpl(typeParameterSymbol.toLookupTag(), false))
 
         val argumentType =
-            FirResolvedTypeRefImpl(null, returnType.coneTypeUnsafe<ConeKotlinType>().withNullability(ConeNullability.NULLABLE))
+            FirResolvedTypeRefImpl(
+                null, returnType.coneTypeUnsafe<ConeKotlinType>().withNullability(
+                    ConeNullability.NULLABLE, session.typeContext
+                )
+            )
         val typeArgument = FirTypeProjectionWithVarianceImpl(null, returnType, Variance.INVARIANT)
 
         return generateMemberFunction(
