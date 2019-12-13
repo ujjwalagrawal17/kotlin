@@ -62,8 +62,6 @@ abstract class KotlinDslScriptModelResolverCommon : AbstractProjectResolverExten
         }
     }
 
-    override fun requiresTaskRunning() = true
-
     @Suppress("unused")
     private fun KotlinDslScriptsModel.toListOfScriptModels(): List<KotlinDslScriptModel> =
         scriptModels.map { (file, model) ->

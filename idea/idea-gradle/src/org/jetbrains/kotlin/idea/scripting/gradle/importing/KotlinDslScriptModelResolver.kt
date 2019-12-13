@@ -7,4 +7,5 @@ package org.jetbrains.kotlin.idea.scripting.gradle.importing
 
 class KotlinDslScriptModelResolver : KotlinDslScriptModelResolverCommon() {
     override fun getModelProvider() = KotlinDslScriptModelProvider()
+    override fun requiresTaskRunning() = true
 }
