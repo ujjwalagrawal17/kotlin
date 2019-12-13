@@ -166,7 +166,7 @@ abstract class AbstractTypeCheckerContextForConstraintSystem : AbstractTypeCheck
                         if (subType.isNullableType()) {
                             subType // prefer nullable type to flexible one: `Foo? <: (T..T?)` => lowerConstraint = `Foo?`
                         } else {
-                            createFlexibleType(subType.makeSimpleTypeDefinitelyNotNullOrNotNull(), subType)
+                            createFlexibleType(subType, subType.withNullability(true))
                         }
 
                     is FlexibleTypeMarker ->
@@ -196,18 +196,20 @@ abstract class AbstractTypeCheckerContextForConstraintSystem : AbstractTypeCheck
      * T  <: Foo -- leave as is
      */
     private fun simplifyUpperConstraint(typeVariable: KotlinTypeMarker, superType: KotlinTypeMarker): Boolean {
-        @Suppress("NAME_SHADOWING")
-        val typeVariable = typeVariable.lowerBoundIfFlexible()
+        val isFlexibleTypeVariable = typeVariable.isFlexible()
+        val typeVariableLowerBound = typeVariable.lowerBoundIfFlexible()
+        val simplifiedSuperType = if (typeVariableLowerBound.isDefinitelyNotNullType()) {
+            superType.withNullability(true)
+        } else if (isFlexibleTypeVariable && superType is SimpleTypeMarker) {
+            createFlexibleType(superType, superType.withNullability(true))
+        } else superType
 
-        @Suppress("NAME_SHADOWING")
-        val superType = if (typeVariable.isDefinitelyNotNullType()) superType.withNullability(true) else superType
+        addUpperConstraint(typeVariableLowerBound.typeConstructor(), simplifiedSuperType)
 
-        addUpperConstraint(typeVariable.typeConstructor(), superType)
-
-        if (typeVariable.isMarkedNullable()) {
+        if (typeVariableLowerBound.isMarkedNullable()) {
             // here is important that superType is singleClassifierType
-            return superType.anyBound(this::isMyTypeVariable) ||
-                    isSubtypeOfByTypeChecker(nullableNothingType(), superType)
+            return simplifiedSuperType.anyBound(this::isMyTypeVariable) ||
+                    isSubtypeOfByTypeChecker(nullableNothingType(), simplifiedSuperType)
         }
 
         return true

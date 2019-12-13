@@ -21,10 +21,7 @@ import org.jetbrains.kotlin.resolve.calls.tasks.ExplicitReceiverKind.*
 import org.jetbrains.kotlin.resolve.calls.tower.InfixCallNoInfixModifier
 import org.jetbrains.kotlin.resolve.calls.tower.InvokeConventionCallNoOperatorModifier
 import org.jetbrains.kotlin.resolve.calls.tower.VisibilityError
-import org.jetbrains.kotlin.types.ErrorUtils
-import org.jetbrains.kotlin.types.KotlinType
-import org.jetbrains.kotlin.types.TypeSubstitutor
-import org.jetbrains.kotlin.types.UnwrappedType
+import org.jetbrains.kotlin.types.*
 import org.jetbrains.kotlin.types.typeUtil.contains
 import org.jetbrains.kotlin.utils.addToStdlib.safeAs
 
@@ -122,6 +119,11 @@ internal object NoArguments : ResolutionPart() {
     }
 }
 
+fun TypeParameterDescriptor.shouldBeFlexible(): Boolean {
+    return upperBounds.any {
+        it.isFlexible() || ((it.constructor.declarationDescriptor as? TypeParameterDescriptor)?.run { shouldBeFlexible() } ?: false)
+    }
+}
 
 internal object CreateFreshVariablesSubstitutor : ResolutionPart() {
     override fun KotlinResolutionCandidate.process(workIndex: Int) {
@@ -145,12 +147,16 @@ internal object CreateFreshVariablesSubstitutor : ResolutionPart() {
         val typeParameters = candidateDescriptor.original.typeParameters
         for (index in typeParameters.indices) {
             val typeParameter = typeParameters[index]
+            val shouldTypeParameterBeFlexible = typeParameter.shouldBeFlexible()
             val freshVariable = toFreshVariables.freshVariables[index]
+            val typeVariableType = freshVariable.defaultType.let { type ->
+                if (shouldTypeParameterBeFlexible) KotlinTypeFactory.flexibleType(type, type.makeNullableAsSpecified(true)) else type
+            }
 
             val knownTypeArgument = knownTypeParametersResultingSubstitutor?.substitute(typeParameter.defaultType)
             if (knownTypeArgument != null) {
                 csBuilder.addEqualityConstraint(
-                    freshVariable.defaultType,
+                    typeVariableType,
                     knownTypeArgument.unwrap(),
                     KnownTypeParameterConstraintPosition(knownTypeArgument)
                 )
@@ -161,7 +167,7 @@ internal object CreateFreshVariablesSubstitutor : ResolutionPart() {
 
             if (typeArgument is SimpleTypeArgument) {
                 csBuilder.addEqualityConstraint(
-                    freshVariable.defaultType,
+                    typeVariableType,
                     typeArgument.type,
                     ExplicitTypeParameterConstraintPosition(typeArgument)
                 )
