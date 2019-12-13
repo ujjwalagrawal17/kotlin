@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2018 JetBrains s.r.o. and Kotlin Programming Language contributors.
+ * Copyright 2000-2019 JetBrains s.r.o. and Kotlin Programming Language contributors.
  * Use of this source code is governed by the Apache 2.0 license that can be found in the license/LICENSE.txt file.
  */
 
@@ -23,13 +23,13 @@ class ReplaceArrayOfWithLiteralInspection : AbstractKotlinInspection() {
     override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor {
         return callExpressionVisitor(fun(expression) {
             if (!expression.languageVersionSettings.supportsFeature(ArrayLiteralsInAnnotations) &&
-                !ApplicationManager.getApplication().isUnitTestMode) return
+                !ApplicationManager.getApplication().isUnitTestMode
+            ) return
 
             val calleeExpression = expression.calleeExpression as? KtNameReferenceExpression ?: return
             if (!expression.isArrayOfMethod()) return
 
-            val parent = expression.parent
-            when (parent) {
+            when (val parent = expression.parent) {
                 is KtValueArgument -> {
                     if (parent.parent.parent !is KtAnnotationEntry) return
                     if (parent.getSpreadElement() != null && !parent.isNamed()) return

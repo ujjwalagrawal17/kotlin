@@ -57,8 +57,10 @@ class MultipleScriptDefinitionsChecker(private val project: Project) : EditorNot
 
     private fun areDefinitionsForGradleKts(allApplicableDefinitions: List<ScriptDefinition>): Boolean {
         if (allApplicableDefinitions.size == 2) {
-            return allApplicableDefinitions[0].asLegacyOrNull<KotlinScriptDefinitionFromAnnotatedTemplate>()?.scriptFilePattern?.pattern == "^(settings|.+\\.settings)\\.gradle\\.kts\$"
-                    && allApplicableDefinitions[1].asLegacyOrNull<KotlinScriptDefinitionFromAnnotatedTemplate>()?.scriptFilePattern?.pattern == ".*\\.gradle\\.kts"
+            return allApplicableDefinitions[0].asLegacyOrNull<KotlinScriptDefinitionFromAnnotatedTemplate>()?.scriptFilePattern
+                ?.pattern == "^(settings|.+\\.settings)\\.gradle\\.kts\$"
+                    && allApplicableDefinitions[1].asLegacyOrNull<KotlinScriptDefinitionFromAnnotatedTemplate>()?.scriptFilePattern
+                ?.pattern == ".*\\.gradle\\.kts"
         }
         return false
     }

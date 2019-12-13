@@ -81,8 +81,8 @@ object ToExtensionFunctionWithNonNullableArguments : Transformation {
 
     override fun isApplicableInContext(callExpression: KtCallExpression, context: BindingContext): Boolean = callExpression
         .valueArguments.all {
-        it.getArgumentExpression()?.getType(context)?.isNullable() == false
-    }
+            it.getArgumentExpression()?.getType(context)?.isNullable() == false
+        }
 }
 
 object ToExtensionFunctionWithNullableReceiver : Transformation {
