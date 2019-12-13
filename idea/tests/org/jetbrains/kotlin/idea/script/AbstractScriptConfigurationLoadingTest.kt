@@ -5,6 +5,7 @@
 
 package org.jetbrains.kotlin.idea.script
 
+import com.android.utils.toSystemLineSeparator
 import com.intellij.openapi.components.ServiceManager
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
@@ -89,11 +90,11 @@ abstract class AbstractScriptConfigurationLoadingTest : AbstractScriptConfigurat
     protected fun assertAppliedConfiguration(contents: String, file: KtFile = myFile as KtFile) {
         val secondConfiguration = scriptConfigurationManager.getConfiguration(file)!!
         assertEquals(
-            contents,
+            contents.toSystemLineSeparator(),
             secondConfiguration.defaultImports.single().let {
                 check(it.startsWith("x_"))
                 it.removePrefix("x_")
-            }
+            }.toSystemLineSeparator()
         )
     }
 
