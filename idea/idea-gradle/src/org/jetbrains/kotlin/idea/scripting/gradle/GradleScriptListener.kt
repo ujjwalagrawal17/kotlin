@@ -11,7 +11,7 @@ import com.intellij.openapi.vfs.VirtualFile
 import org.jetbrains.kotlin.idea.core.script.configuration.listener.ScriptChangeListener
 import org.jetbrains.kotlin.idea.core.script.configuration.listener.ScriptConfigurationUpdater
 
-internal open class GradleScriptListener(project: Project) : ScriptChangeListener(project) {
+open class GradleScriptListener(project: Project) : ScriptChangeListener(project) {
 
     override fun editorActivated(vFile: VirtualFile, updater: ScriptConfigurationUpdater) {
         if (!isGradleKotlinScript(vFile)) return
