@@ -1356,9 +1356,6 @@ open class IrFileSerializer(
             // TODO: need to handle this situation better
             if (expectDeclaration.module == actualDeclaration.module) return@next
 
-            val expectIndex = declarationTable.uniqIdByDeclaration(expectDeclaration).index
-            val actualIndex = declarationTable.uniqIdByDeclaration(actualDeclaration).index
-
             proto.addActuals(
                 ProtoActual.newBuilder()
                     .setExpectSymbol(serializeIrSymbol(expectSymbol))
