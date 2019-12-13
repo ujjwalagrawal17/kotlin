@@ -1,3 +1,5 @@
+// IGNORE_BACKEND_FIR: JVM_IR
+
 abstract class A(val value: String) {
     constructor(k: Char = 'K') : this("O$k")
 }

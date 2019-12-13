@@ -1,3 +1,4 @@
+// IGNORE_BACKEND_FIR: JVM_IR
 
 open class Foo(val args: String){
     constructor(arg: Any = 1) : this(arg.toString()) {
