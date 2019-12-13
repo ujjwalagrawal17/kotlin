@@ -14,14 +14,14 @@ public actual interface Appendable {
      *
      * @param c the character to append.
      */
-    public actual fun append(c: Char): Appendable
+    public actual fun append(value: Char): Appendable
 
     /**
      * Appends the specified character sequence [csq] to this Appendable and returns this instance.
      *
      * @param csq the character sequence to append. If [csq] is `null`, then the four characters `"null"` are appended to this Appendable.
      */
-    public actual fun append(csq: CharSequence?): Appendable
+    public actual fun append(value: CharSequence?): Appendable
 
     /**
      * Appends a subsequence of the specified character sequence [csq] to this Appendable and returns this instance.
@@ -33,5 +33,5 @@ public actual interface Appendable {
      *
      * @throws IndexOutOfBoundsException or [IllegalArgumentException] when [start] or [end] is out of range of the [csq] character sequence indices or when `start > end`.
      */
-    public actual fun append(csq: CharSequence?, start: Int, end: Int): Appendable
+    public actual fun append(value: CharSequence?, startIndex: Int, endIndex: Int): Appendable
 }
