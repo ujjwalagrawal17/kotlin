@@ -10,9 +10,7 @@ import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.descriptors.impl.EmptyPackageFragmentDescriptor
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
-import org.jetbrains.kotlin.ir.declarations.IrDeclaration
-import org.jetbrains.kotlin.ir.declarations.IrFile
-import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
+import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.declarations.impl.IrClassImpl
 import org.jetbrains.kotlin.ir.declarations.impl.IrFileImpl
 import org.jetbrains.kotlin.ir.declarations.impl.IrModuleFragmentImpl
@@ -21,8 +19,7 @@ import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.impl.IrBlockBodyImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrErrorExpressionImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrLoopBase
-import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
-import org.jetbrains.kotlin.ir.symbols.IrSymbol
+import org.jetbrains.kotlin.ir.symbols.*
 import org.jetbrains.kotlin.ir.symbols.impl.*
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.impl.IrErrorTypeImpl
@@ -49,12 +46,13 @@ abstract class KotlinIrLinker(
     val symbolTable: SymbolTable,
     private val exportedDependencies: List<ModuleDescriptor>,
     private val forwardModuleDescriptor: ModuleDescriptor?,
-    mangler: KotlinMangler,
-    val klibMpp: Boolean
+    mangler: KotlinMangler
 ) : DescriptorUniqIdAware, IrDeserializer {
 
-    val expectUniqIdToActualProto =
-        mutableMapOf<UniqId, Pair<KotlinIrLinker.IrModuleDeserializer.IrDeserializerForFile, ProtoSymbolData>>()
+    val expectUniqIdToActualUniqId = mutableMapOf<UniqId, UniqId>()
+    val topLevelActualUniqItToDeserializer = mutableMapOf<UniqId, IrModuleDeserializer>()
+    val expectSymbols = mutableMapOf<UniqId, IrSymbol>()
+    val actualSymbols = mutableMapOf<UniqId, IrSymbol>()
 
     sealed class DeserializationState<T> {
         val deserializedSymbols = mutableMapOf<UniqId, IrSymbol>()
@@ -135,14 +133,7 @@ abstract class KotlinIrLinker(
         private val moduleDeserializationState = DeserializationState.ModuleDeserializationState(this)
         val moduleReversedFileIndex = mutableMapOf<UniqId, IrDeserializerForFile>()
         private val moduleDependencies by lazy {
-            // TODO: Substituting actual instead on expect creates symbol links going against library dependency dag.
-            // That requires some redesign and rework on combining SCC of symbol references to a single logical module.
-            // For now we just search in all deserializers.
-            if (klibMpp) {
-                deserializersForModules.values.minus(this)
-            } else {
-                moduleDescriptor.allDependencyModules.filter { it != moduleDescriptor }.map { deserializersForModules[it]!! }
-            }
+            moduleDescriptor.allDependencyModules.filter { it != moduleDescriptor }.map { deserializersForModules[it]!! }
         }
 
         // This is a heavy initializer
@@ -179,10 +170,12 @@ abstract class KotlinIrLinker(
                     val actualSymbol = loadSymbolProto(it.actualSymbol)
                     val expect = UniqId(expectSymbol.uniqIdIndex)
                     val actual = UniqId(actualSymbol.uniqIdIndex)
-                    assert(expectUniqIdToActualProto[expect] == null) {
-                        "Expect uniqid ${expect.index} is already actualized by ${expectUniqIdToActualProto[expect]?.second?.uniqIdIndex}, while we try to record ${actual.index}"
+                    assert(expectUniqIdToActualUniqId[expect] == null) {
+                        "Expect uniqid ${expect.index} is already actualized by ${expectUniqIdToActualUniqId[expect]?.index}, while we try to record ${actual.index}"
                     }
-                    expectUniqIdToActualProto.put(expect, this to actualSymbol)
+                    expectUniqIdToActualUniqId.put(expect, actual)
+                    // Non-null only for topLevel declarations.
+                    getModuleForTopLevelId(actual)?. let { topLevelActualUniqItToDeserializer.put(actual, it) }
                 }
             }
 
@@ -321,11 +314,7 @@ abstract class KotlinIrLinker(
                 return getModuleForTopLevelId(key)?.moduleDeserializationState ?: handleNoModuleDeserializerFound(key)
             }
 
-            private fun deserializeIrSymbolData(maybeExpectProto: ProtoSymbolData): IrSymbol {
-
-                val delegateToActual = expectUniqIdToActualProto[UniqId(maybeExpectProto.uniqIdIndex)]
-                val proto = delegateToActual?.second ?: maybeExpectProto
-
+            private fun deserializeIrSymbolData(proto: ProtoSymbolData): IrSymbol {
                 val key = UniqId(proto.uniqIdIndex)
                 val topLevelKey = UniqId(proto.topLevelUniqIdIndex)
 
@@ -342,7 +331,7 @@ abstract class KotlinIrLinker(
 
                 val symbol = deserializationState.deserializedSymbols.getOrPut(key) {
                     val descriptor = if (proto.hasDescriptorReference()) {
-                        (delegateToActual?.first ?: this).deserializeDescriptorReference(proto.descriptorReference)
+                        deserializeDescriptorReference(proto.descriptorReference)
                     } else {
                         null
                     }
@@ -352,7 +341,14 @@ abstract class KotlinIrLinker(
                         if (it !in fdState) fdState.addUniqID(it)
                     }
 
-                    referenceDeserializedSymbol(proto, descriptor)
+                    val symbol = referenceDeserializedSymbol(proto, descriptor).let {
+                        if (expectUniqIdToActualUniqId[key] != null) wrapInDelegatedSymbol(it) else it
+                    }
+
+                    if (key in expectUniqIdToActualUniqId.keys) expectSymbols.put(key, symbol)
+                    if (key in expectUniqIdToActualUniqId.values) actualSymbols.put(key, symbol)
+
+                    symbol
                 }
                 if (symbol.descriptor is ClassDescriptor &&
                     symbol.descriptor !is WrappedDeclarationDescriptor<*> &&
@@ -418,9 +414,6 @@ abstract class KotlinIrLinker(
 
             fun deserializeAllFileReachableTopLevel() {
                 fileLocalDeserializationState.processPendingDeclarations {
-                    assert(expectUniqIdToActualProto[it] == null) {
-                        "Somehow we try to deserialize expect declaration for $it in the presence of ${expectUniqIdToActualProto[it]!!.second.uniqIdIndex}"
-                    }
                     val declaration = deserializeDeclaration(it)
                     file.declarations.add(declaration)
                 }
@@ -637,6 +630,41 @@ abstract class KotlinIrLinker(
         deserializersForModules.values.forEach {
             it.fileToDeserializerMap.values.forEach {
                 it.deserializeExpectActualMapping()
+            }
+        }
+    }
+
+    // The issue here is that an expect can not trigger its actual deserialization by reachability
+    // because the expect can not see the actual higher in the module dependency dag.
+    // So we force deserialization of actuals for all deserialized expect symbols here.
+    fun finalizeExpectActualLinker() {
+        expectUniqIdToActualUniqId.filter{ topLevelActualUniqItToDeserializer[it.value] != null}.forEach {
+            val expectSymbol = expectSymbols[it.key]
+            val actualSymbol = actualSymbols[it.value]
+            if (expectSymbol != null && (actualSymbol == null || !actualSymbol.isBound)) {
+                topLevelActualUniqItToDeserializer[it.value]!!.addModuleReachableTopLevel(it.value)
+                deserializeAllReachableTopLevels()
+            }
+        }
+
+        // Now after all actuals have been deserialized, retarget delegating symbols from expects to actuals.
+        expectUniqIdToActualUniqId.forEach {
+            val expectSymbol = expectSymbols[it.key]
+            val actualSymbol = actualSymbols[it.value]
+            if (expectSymbol != null && actualSymbol != null) {
+                when (expectSymbol) {
+                    is IrDelegatingClassSymbolImpl ->
+                        expectSymbol.delegate = actualSymbol as IrClassSymbol
+                    is IrDelegatingEnumEntrySymbolImpl ->
+                        expectSymbol.delegate = actualSymbol as IrEnumEntrySymbol
+                    is IrDelegatingSimpleFunctionSymbolImpl ->
+                        expectSymbol.delegate = actualSymbol as IrSimpleFunctionSymbol
+                    is IrDelegatingConstructorSymbolImpl ->
+                        expectSymbol.delegate = actualSymbol as IrConstructorSymbol
+                    is IrDelegatingPropertySymbolImpl ->
+                        expectSymbol.delegate = actualSymbol as IrPropertySymbol
+                    else -> error("Unexpected expect symbol kind during actualization: $expectSymbol")
+                }
             }
         }
     }
